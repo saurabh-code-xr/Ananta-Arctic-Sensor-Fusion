@@ -70,7 +70,7 @@ sensors:
 
   # NOAA adapter config (used when source = noaa)
   noaa:
-    station_id: "GHCND:USW00027503"  # Barrow, Alaska — northernmost US weather station
+    station_id: "GHCND:USW00094728"  # San Francisco International Airport (testing)
     dataset: "GHCND"
     token: ""                    # set via NOAA_TOKEN env var or here
     lookback_days: 30
