@@ -70,7 +70,7 @@ sensors:
 
   # NOAA adapter config (used when source = noaa)
   noaa:
-    station_id: "KSFO"           # NOAA station ID — replace with Arctic/maritime station
+    station_id: "GHCND:USW00027503"  # Barrow, Alaska — northernmost US weather station
     dataset: "GHCND"
     token: ""                    # set via NOAA_TOKEN env var or here
     lookback_days: 30
@@ -89,3 +89,15 @@ sensors:
     detected_col: "detected"
     quality_col: "quality"
     latency_col: "latency_ms"
+
+  # OpenAQ adapter config (used when source = openaq)
+  # No authentication required — free API
+  openaq:
+    countries: ["US", "CA", "NO"]  # Countries to fetch air quality data from
+    limit: 10                        # Max stations per country
+
+  # USGS adapter config (used when source = usgs)
+  # No authentication required — free API
+  usgs:
+    min_magnitude: 4.0              # Minimum earthquake magnitude to include
+    time_range_hours: 720           # 30 days of data to find significant events
