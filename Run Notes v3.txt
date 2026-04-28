@@ -1,0 +1,57 @@
+Run Notes v3
+Date: March 9, 2026
+
+Prototype Name:
+Confidence-Weighted Fusion of Heterogeneous Sensors Under Degraded Sensing Conditions
+
+Run Type:
+Version 3 reliability-aware fusion prototype run
+
+Scenario Used:
+gradual_degradation
+
+Observed Confidence Sequence:
+Time 1: HIGH
+Time 2: HIGH
+Time 3: MEDIUM
+Time 4: MEDIUM
+Time 5: LOW
+
+Observed Outcome:
+Confidence collapse detected at Time Step 5
+
+Version 3 Upgrade:
+Historical reliability memory was added to the fusion logic. Each sensor now receives a reliability factor based on prior time-step reliability samples, and this factor is used in addition to quality and latency freshness during weight calculation.
+
+Example Final-Step Observation:
+Raw weighted detection score: 0.227
+Disagreement penalty: 0.8
+Final weighted detection score: 0.181
+
+Example Final-Step Reliability Factors:
+Sensor A reliability factor: 0.9
+Sensor B reliability factor: 0.9
+Sensor C reliability factor: 0.75
+
+Reliability History Observed:
+A: [0.92, 0.792, 0.72, 0.488, 0.158]
+B: [0.81, 0.738, 0.675, 0.193, 0.07]
+C: [0.801, 0.63, 0.465, 0.175, 0.08]
+
+Current Prototype Summary:
+The Version 3 prototype strengthens Version 2 by making current sensor contribution depend not only on present quality and latency, but also on historical reliability over time.
+
+Files Associated with This Run:
+app.py
+fusion_engine.py
+confidence_engine.py
+scenarios.py
+sensor_simulator.py
+reliability_memory.py
+
+Related Documents:
+Invention_Disclosure_Confidence_Weighted_Fusion_v1
+V1_Fusion_Prototype_Technical_Note
+
+Version Note:
+This run should be treated as the V3 reference state for reliability-aware fusion.

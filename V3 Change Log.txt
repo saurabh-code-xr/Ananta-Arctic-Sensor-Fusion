@@ -1,0 +1,17 @@
+V3 Change Log
+Date: March 9, 2026
+
+Change Summary:
+Added historical reliability memory to fusion logic.
+
+Previous Behavior:
+In Version 2, sensor contribution depended on current quality, current latency freshness, and disagreement penalty.
+
+New Behavior:
+In Version 3, sensor contribution also depends on a historical reliability factor derived from prior time-step reliability samples.
+
+Why This Matters:
+This makes the fusion method more realistic and more defensible as a technical invention because sensor trust now reflects recent behavior over time, not just the current snapshot.
+
+Status:
+V3 complete and saved as current reference state.
