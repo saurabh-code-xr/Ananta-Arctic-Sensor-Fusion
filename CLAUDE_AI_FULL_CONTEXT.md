@@ -728,24 +728,31 @@ See `FUTURE_IMPROVEMENTS.md` for the larger lifts that aren't in this PR.
 **Before.** `freshness_factor()` was a piecewise-constant step function
 with hardcoded brackets (`<= 100ms => 1.0`, `<= 200ms => 0.9`, ...).
 A 1ms change in latency could swing the freshness weight by 0.15.
+Worse: the brackets were calibrated for drones — marine/satellite platforms
+operate at 800–2000ms normally, so the engine rated all readings LOW due
+to expected latency, not actual degradation.
 
-**After.** Three continuous decay models — exponential (default), linear,
-sigmoid — selectable via config:
+**After.** Continuous exponential decay is now the **default**. Three
+models available — exponential (default), linear, sigmoid:
 
 ```yaml
 fusion:
   freshness_continuous:
     model: exponential
-    tau_ms: 250
+    tau_ms: 500      # marine/satellite safe default
     floor: 0.05
 ```
 
-Defaults are calibrated to roughly match the legacy bracket curve.
-Bracket-based freshness remains the default for backwards compatibility.
+To revert to legacy bracket mode: set `freshness_continuous: false`.
 
-**Why it matters.** Continuous decay is what's expected by anyone who
-has read a sensor-fusion paper. It also gives a single tunable parameter
-(`tau_ms`) per sensor class instead of 6 bracket values.
+**Environment presets:**
+- Marine / satellite (800–2000ms normal): `tau_ms: 500`
+- Drone / Arctic terrestrial (low-latency): `tau_ms: 200`
+
+**Why it matters.** Continuous decay is physically realistic and
+auditable — one tunable parameter (`tau_ms`) instead of 6 arbitrary
+bracket values. Critical for marine validation: prevents the engine from
+penalising normal satellite latency as degradation.
 
 ## 2. Entropy-based weighted disagreement penalty (`data_fusion/disagreement.py`)
 
@@ -887,7 +894,7 @@ The original repo had 65 tests passing. This branch adds 47 tests across
 
 ## 7. Demo config (`config_demo.yaml`)
 
-A drop-in config that enables every new opt-in feature simultaneously:
+A drop-in config that enables all advanced fusion features simultaneously:
 
 ```bash
 python run_experiment.py --config config_demo.yaml --compare --scenario stale_data
