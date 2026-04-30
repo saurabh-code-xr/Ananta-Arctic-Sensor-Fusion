@@ -166,7 +166,7 @@ data_fusion/
 experiments/
 └── runner.py           # Repeatable experiment runner + metrics
 
-tests/                  # 65 tests, all passing
+tests/                  # 112 tests, all passing
 results/                # Experiment output (JSON)
 config.yaml             # All tunable parameters
 ```
@@ -249,7 +249,7 @@ python -m pytest tests/ -v
 | CSV adapter | Done |
 | NOAA adapter | Done |
 | OpenWeatherMap adapter | Done |
-| 65 unit tests passing | Done |
+| 112 unit tests passing | Done |
 | Live hardware integration | Next (TRL 4) |
 | Real sensor validation | Next (TRL 4) |
 

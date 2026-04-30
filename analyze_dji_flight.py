@@ -16,7 +16,8 @@ from data_fusion.confidence_engine import compute_confidence
 from data_fusion.reliability_memory import update_reliability_history
 from data_fusion import config as cfg_module
 
-CSV_PATH = r"D:\Ananta Meridian\Data fusion_Claude\flight_data.csv"
+# Path relative to this script — works on any machine
+CSV_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "flight_data.csv")
 STEP_SIZE = 5  # Group every N records into one time step
 
 

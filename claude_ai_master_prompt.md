@@ -39,7 +39,11 @@ Architecture modules:
 5. Orchestrator/Runner — executes scenarios across time steps
 
 Current TRL: 3 (analytical + experimental proof of concept validated)
-- 5 simulated degraded sensing scenarios, 65 tests passing
+- 5 simulated degraded sensing scenarios, 112 tests passing (all green)
+- Kalman filter baseline comparison with honest results documented
+- Adversarial/spoofing sensor detection added (leave-one-out residual check)
+- Continuous freshness decay (exponential/linear/sigmoid models)
+- Entropy-based disagreement penalty
 - Real DJI Mini 2 drone flight log parsed and run through fusion engine
 - Result: 14/14 time steps correctly rated LOW confidence under real degraded 
   hardware conditions

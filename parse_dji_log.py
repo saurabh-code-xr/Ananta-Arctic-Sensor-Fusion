@@ -8,8 +8,9 @@ import struct
 import csv
 import os
 
-LOG_PATH = r"D:\Ananta Meridian\Evidence Logs\fc_log.log"
-OUT_CSV  = r"D:\Ananta Meridian\Data fusion_Claude\flight_data.csv"
+_HERE    = os.path.dirname(os.path.abspath(__file__))
+LOG_PATH = os.path.join(_HERE, "..", "Evidence Logs", "fc_log.log")
+OUT_CSV  = os.path.join(_HERE, "flight_data.csv")
 
 MARKER = b"LGY"
 
