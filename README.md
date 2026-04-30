@@ -94,19 +94,24 @@ Edit `config.yaml` to match your sensor characteristics:
 ```yaml
 fusion:
   detection_threshold: 0.6    # lower = more sensitive to weak signals
-  disagreement_penalty: 0.8   # lower = harsher penalty for sensor conflict
 
-  freshness_brackets:
-    # Increase max_latency_ms for satellite comms or slow sensor networks
-    - max_latency_ms: 500     # was 100 — adjusted for high-latency environment
-      factor: 1.0
-    ...
+  # Freshness decay — controls how latency reduces sensor trust weight.
+  # Default: exponential with tau_ms=500 (marine/satellite safe).
+  # At tau_ms latency, trust drops to ~37%. At 3×tau_ms, trust ≈ 5%.
+  freshness_continuous:
+    model: exponential
+    tau_ms: 500    # marine/satellite default — increase for slower comms
+    floor: 0.05    # minimum trust floor (never fully ignores a sensor)
+  # For drone/terrestrial low-latency platforms, use tau_ms: 200
 
 confidence:
   thresholds:
     high:
-      min_score: 0.8          # raise for conservative HIGH confidence
-      max_latency_ms: 200     # lower for fresher-data requirements
+      min_score: 0.8
+      max_latency_ms: 1000    # marine default — reduce for low-latency platforms
+    medium:
+      min_score: 0.5
+      max_latency_ms: 2000
 ```
 
 ### Step 4: Plug in your data source
