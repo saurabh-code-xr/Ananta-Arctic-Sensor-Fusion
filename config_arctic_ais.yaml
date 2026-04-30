@@ -1,0 +1,56 @@
+# Ananta Meridian — Arctic AIS Configuration
+# Tuned for AIS vessel tracking data where "latency" = update interval,
+# not real-time comms delay.
+#
+# AIS Class A (underway): reports every 2-10 seconds = 2,000-10,000 ms
+# Satellite AIS pass gap: 10-25 minutes = 600,000-1,500,000 ms (NORMAL)
+# Genuine loss of contact: > 4 hours = > 14,400,000 ms (DEGRADED)
+#
+# Source: PAME ASTD 2023, OrbComm/Iridium polar coverage documentation
+
+system:
+  name: "Ananta Meridian — Arctic AIS Mode"
+  version: "0.2.0"
+  log_level: "WARNING"
+  log_to_file: false
+
+fusion:
+  detection_threshold: 0.5
+  disagreement_penalty: 0.8
+
+  # Exponential decay tuned for AIS satellite pass intervals.
+  # tau_ms = 900,000 ms (15 minutes) — at one satellite pass gap, trust = 0.37.
+  # At 3 pass gaps (~45 min, tau*3), trust approaches floor.
+  freshness_continuous:
+    model: exponential
+    tau_ms: 900000       # 15 minutes — calibrated to satellite AIS pass interval
+    floor: 0.05
+
+confidence:
+  # AIS-specific thresholds based on Class A update intervals
+  thresholds:
+    high:
+      min_score: 0.7
+      min_quality: 0.75
+      max_latency_ms: 30000        # 30 seconds — good Class A terrestrial AIS
+      allow_disagreement: false
+    medium:
+      min_score: 0.4
+      min_quality: 0.5
+      max_latency_ms: 1800000      # 30 minutes — within normal satellite pass gap
+  sensor_flags:
+    low_quality_threshold: 0.4
+    high_latency_threshold: 3600000  # Flag only if > 1 hour (genuine signal loss)
+
+experiment:
+  results_dir: "results"
+  save_results: true
+
+sensors:
+  source: "csv"
+  csv:
+    file_path: "data/arctic_ais_parsed.csv"
+    sensor_col: "sensor_id"
+    detected_col: "detected"
+    quality_col: "quality"
+    latency_col: "latency_ms"
