@@ -30,10 +30,25 @@ logger = get_logger("fusion")
 
 
 def _resolve_freshness(latency_ms: float, config: dict | None) -> float:
-    """Pick continuous or bracket-based freshness depending on config."""
-    if config and config.get("fusion", {}).get("freshness_continuous"):
+    """Pick continuous or bracket-based freshness depending on config.
+
+    Default (no config, or freshness_continuous not set to False):
+        continuous exponential decay — physically realistic, auditable.
+
+    Legacy bracket mode: set `fusion.freshness_continuous: false` in config.yaml.
+    This matters for marine/satellite environments where 800–2000 ms latency is
+    normal; the old bracket table would rate everything LOW regardless of actual
+    degradation.
+    """
+    if config is not None:
+        fc_setting = config.get("fusion", {}).get("freshness_continuous")
+        # Explicit false → legacy bracket mode
+        if fc_setting is False:
+            return freshness_factor(latency_ms, config=config)
+        # Dict → continuous with those params; True or absent → continuous with defaults
         return freshness_continuous(latency_ms, config=config)
-    return freshness_factor(latency_ms, config=config)
+    # No config at all → continuous with defaults (tau_ms=500, marine-safe)
+    return freshness_continuous(latency_ms, config=None)
 
 
 def fuse_sensors(

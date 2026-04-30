@@ -33,18 +33,21 @@ from data_fusion.logger import get_logger
 logger = get_logger("freshness")
 
 
-def exponential_decay(latency_ms: float, tau_ms: float = 250.0, floor: float = 0.05) -> float:
+def exponential_decay(latency_ms: float, tau_ms: float = 500.0, floor: float = 0.05) -> float:
     """
     Exponential decay: f(t) = exp(-t / tau), clamped to [floor, 1.0].
 
     tau_ms controls how fast freshness decays. After `tau_ms` of latency,
     freshness drops to ~37%. After 3*tau_ms, freshness is ~5%.
 
+    Default tau_ms = 500ms — appropriate for marine/satellite environments
+    where 800–2000 ms latency is operationally normal, not degraded.
+    For drone/terrestrial (low-latency) environments, set tau_ms: 200 in config.
+
     Parameters
     ----------
     latency_ms : non-negative latency in milliseconds
-    tau_ms     : characteristic time constant (default 250ms — calibrated
-                 to roughly match the legacy bracket curve)
+    tau_ms     : characteristic time constant (default 500ms — marine/satellite safe)
     floor      : minimum freshness value to prevent total trust collapse
 
     Returns

@@ -13,22 +13,31 @@ fusion:
   detection_threshold: 0.6   # weighted_score >= this → fused_detection = True
   disagreement_penalty: 0.8  # legacy flat penalty multiplier when sensors contradict (used unless weighted_disagreement.enabled)
 
-  # ── Continuous freshness decay (opt-in) ──
-  # When enabled, replaces the bracket-based freshness function with a
-  # smooth continuous decay curve. Recommended for any defensible review;
-  # the bracket function is kept as the default for backwards compatibility.
+  # ── Continuous freshness decay (DEFAULT: on) ──
+  # Replaces the bracket step-function with a smooth exponential decay.
+  # Physically realistic and auditable — no arbitrary bracket boundaries.
   #
-  # Models: exponential | linear | sigmoid
+  # To revert to legacy bracket mode: set freshness_continuous: false
+  #
+  # Environment presets (uncomment one block):
+  #
+  # Marine / satellite comms (800–2000 ms latency is normal, not degraded):
+  freshness_continuous:
+    model: exponential
+    tau_ms: 500          # at 500ms latency freshness = 0.37; at 1500ms ≈ 0.05
+    floor: 0.05
+  #
+  # Drone / Arctic terrestrial (low-latency environment):
   # freshness_continuous:
   #   model: exponential
-  #   tau_ms: 250        # exponential time constant
-  #   floor: 0.05        # minimum freshness floor (avoids total trust collapse)
+  #   tau_ms: 200        # at 200ms freshness = 0.37; tighter than marine
+  #   floor: 0.05
   #
-  # Or for sigmoid:
+  # Sigmoid (sharp knee — use when latency is stable then suddenly degrades):
   # freshness_continuous:
   #   model: sigmoid
-  #   t0_ms: 300         # latency at which freshness has dropped to 0.5
-  #   k_ms: 80           # slope (smaller = sharper transition)
+  #   t0_ms: 800         # knee latency for marine; use 300 for terrestrial
+  #   k_ms: 150
   #   floor: 0.05
 
   # ── Weighted disagreement penalty (opt-in) ──
@@ -87,19 +96,21 @@ fusion:
       factor: 0.6
 
 confidence:
+  # Thresholds tuned for marine/satellite environment (800–2000ms normal latency).
+  # For drone/terrestrial, reduce max_latency_ms values (200 / 450 respectively).
   thresholds:
     high:
       min_score: 0.8
       min_quality: 0.8
-      max_latency_ms: 200
+      max_latency_ms: 1000       # marine: satellite comms up to 1s is normal
       allow_disagreement: false
     medium:
       min_score: 0.5
       min_quality: 0.55
-      max_latency_ms: 450
+      max_latency_ms: 2000       # marine: mesh radio bursts up to 2s acceptable
   sensor_flags:
     low_quality_threshold: 0.5    # below this quality → flagged in reasons
-    high_latency_threshold: 400   # above this latency → flagged in reasons
+    high_latency_threshold: 1500  # marine: flag only genuinely excessive latency
 
 experiment:
   results_dir: "results"

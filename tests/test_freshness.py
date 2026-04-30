@@ -86,8 +86,10 @@ def test_sigmoid_invalid_k_raises():
 # ── Config-driven dispatcher ─────────────────────────────────────────────────
 
 def test_freshness_continuous_no_config_uses_exponential():
+    # Default tau_ms is 500 (marine/satellite safe).
+    # At latency = tau_ms, decay = exp(-1) ≈ 0.368.
     assert freshness_continuous(0.0) == pytest.approx(1.0)
-    assert freshness_continuous(250.0) == pytest.approx(math.exp(-1), rel=1e-3)
+    assert freshness_continuous(500.0) == pytest.approx(math.exp(-1), rel=1e-3)
 
 
 def test_freshness_continuous_unknown_model_falls_back_to_exponential():
