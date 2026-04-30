@@ -28,14 +28,16 @@ def run_all_scenarios(method: str, config: dict) -> None:
 
 def compare_methods(scenario_name: str, config: dict) -> None:
     print(f"\nCOMPARISON — Scenario: {scenario_name}")
-    print(f"{'Method':<25} {'Accuracy':>10} {'False HIGH':>12} {'Collapse':>10}")
-    print("-" * 60)
+    print(f"{'Method':<25} {'Accuracy':>10} {'AUC':>8} {'F1':>6} {'False HIGH':>12} {'Collapse':>10}")
+    print("-" * 78)
     for method in FUSION_METHODS:
         result = run_experiment(scenario_name, method=method, save=False, config=config)
         s = result["summary"]
         collapse = s["confidence_collapse_step"] or "-"
         acc = f"{s['accuracy']:.1%}" if s["accuracy"] is not None else "N/A"
-        print(f"  {method:<23} {acc:>10} {s['false_high_confidence_count']:>12} {str(collapse):>10}")
+        auc = f"{s['roc_auc']:.3f}" if s.get("roc_auc") is not None else "-"
+        f1 = f"{s['f1']:.2f}" if s.get("f1") is not None else "-"
+        print(f"  {method:<23} {acc:>10} {auc:>8} {f1:>6} {s['false_high_confidence_count']:>12} {str(collapse):>10}")
     print()
 
 

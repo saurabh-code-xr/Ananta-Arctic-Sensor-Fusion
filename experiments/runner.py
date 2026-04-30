@@ -25,6 +25,8 @@ from data_fusion.fusion_engine import fuse_sensors
 from data_fusion.confidence_engine import compute_confidence
 from data_fusion.reliability_memory import update_reliability_history
 from data_fusion import baselines
+from data_fusion.kalman_baseline import kalman_filter, reset_kalman_state
+from experiments.metrics import detection_metrics, roc_curve
 
 logger = get_logger("runner")
 
@@ -33,7 +35,11 @@ FUSION_METHODS = {
     "simple_average": baselines.simple_average,
     "majority_vote": baselines.majority_vote,
     "best_quality_only": baselines.best_quality_only,
+    "kalman_filter": kalman_filter,
 }
+
+# Methods that maintain state across steps and need a per-run reset hook.
+_STATEFUL_METHODS = {"kalman_filter"}
 
 
 def _setup_from_config() -> dict:
@@ -104,12 +110,20 @@ def run_experiment(
 
     logger.info("Running experiment: scenario=%s method=%s", scenario_name, method)
 
+    if method in _STATEFUL_METHODS:
+        reset_kalman_state()
+
     reliability_history: dict = {}
     step_results = []
 
     for i, sensor_data in enumerate(scenario["steps"]):
         ground_truth = ground_truths[i] if i < len(ground_truths) else None
-        kwargs = {"reliability_history": reliability_history, "config": config} if method == "confidence_weighted" else {}
+        if method == "confidence_weighted":
+            kwargs = {"reliability_history": reliability_history, "config": config}
+        elif method == "kalman_filter":
+            kwargs = {"config": config}
+        else:
+            kwargs = {}
 
         fusion = fuse_fn(sensor_data, **kwargs)
         confidence = compute_confidence(fusion, sensor_data, config=config)
@@ -143,6 +157,7 @@ def run_experiment(
             level: sum(1 for s in step_results if s["confidence_level"] == level)
             for level in ("HIGH", "MEDIUM", "LOW")
         },
+        **detection_metrics(step_results),
     }
 
     timestamp = datetime.now().isoformat(timespec="seconds")
@@ -272,6 +287,10 @@ def print_result(result: dict) -> None:
 
     s = result["summary"]
     print(f"\n  Accuracy              : {str(s['accuracy']) if s['accuracy'] is not None else 'N/A (no ground truth)'}")
+    if s.get("roc_auc") is not None:
+        print(f"  ROC AUC               : {s['roc_auc']}")
+    if s.get("precision") is not None:
+        print(f"  Precision / Recall / F1: {s['precision']} / {s['recall']} / {s['f1']}")
     if s["false_high_confidence_count"] is not None:
         print(f"  False HIGH confidence : {s['false_high_confidence_count']}")
     print(f"  Confidence collapse   : step {s['confidence_collapse_step'] or 'never'}")

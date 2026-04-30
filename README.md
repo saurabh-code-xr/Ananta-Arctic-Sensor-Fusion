@@ -189,19 +189,30 @@ config.yaml             # All tunable parameters
 
 | Method | Description | Best for |
 |---|---|---|
-| `confidence_weighted` | Quality × freshness × reliability weighting | Default; handles degraded sensors well |
+| `confidence_weighted` | Quality × freshness × reliability × (optional adversarial down-weight) | Default; handles degraded sensors well |
+| `kalman_filter` | Discrete scalar Kalman filter with quality/freshness-derived measurement variance | Strong baseline with temporal smoothing |
 | `simple_average` | Unweighted average of all sensors | Baseline |
 | `majority_vote` | >50% detected = True | Baseline |
 | `best_quality_only` | Trust highest-quality sensor | Baseline |
+
+See `IMPROVEMENTS.md` for the opt-in fusion features added in this fork:
+continuous freshness decay, entropy-based weighted disagreement penalty,
+residual-based adversarial sensor detection, and ROC/AUC/F1 metrics.
+Try them with:
+
+```bash
+python run_experiment.py --config config_demo.yaml --compare --scenario stale_data
+```
 
 ---
 
 ## Known Limitations
 
-- **Spoofing vulnerability:** When compromised sensors report high quality but incorrect detections, the weighting system can be misled (see `conflict_spoofing` scenario results).
+- **Collusion vulnerability:** Single-sensor spoofing is now mitigated by the optional residual-based adversarial detector (`fusion.adversarial_detection.enabled = true`). However, when **multiple** sensors collude (>= half the network is compromised), the leave-one-out residual check flags the truth-teller. Cross-modality consistency checks are needed to address this — see `FUTURE_IMPROVEMENTS.md` §4.
 - **Single-sensor normalisation:** Quality/latency weights only affect the score when multiple sensors are present. Single-sensor detection score is always 0 or 1.
 - **Simulated data only (TRL 3):** Real-world validation with live hardware is the next step (TRL 4).
-- **No temporal smoothing:** Each time step is independent. No Kalman filter or state estimation.
+- **Temporal smoothing only via Kalman baseline:** The default `confidence_weighted` method treats time steps independently. The Kalman baseline now provides a stateful alternative; full multi-target tracking is in `FUTURE_IMPROVEMENTS.md` §5.
+- **Small-sample ROC/AUC:** With 5-step scenarios, AUC values are statistically thin. See `FUTURE_IMPROVEMENTS.md` §10.
 
 ---
 
@@ -209,7 +220,7 @@ config.yaml             # All tunable parameters
 
 ```bash
 python -m pytest tests/ -v
-# 65 tests, all passing
+# 112 tests, all passing
 ```
 
 ---
