@@ -11,9 +11,55 @@ system:
 
 fusion:
   detection_threshold: 0.6   # weighted_score >= this → fused_detection = True
-  disagreement_penalty: 0.8  # score multiplier when sensors contradict each other
+  disagreement_penalty: 0.8  # legacy flat penalty multiplier when sensors contradict (used unless weighted_disagreement.enabled)
 
-  # Freshness brackets: how latency maps to a trust weight.
+  # ── Continuous freshness decay (opt-in) ──
+  # When enabled, replaces the bracket-based freshness function with a
+  # smooth continuous decay curve. Recommended for any defensible review;
+  # the bracket function is kept as the default for backwards compatibility.
+  #
+  # Models: exponential | linear | sigmoid
+  # freshness_continuous:
+  #   model: exponential
+  #   tau_ms: 250        # exponential time constant
+  #   floor: 0.05        # minimum freshness floor (avoids total trust collapse)
+  #
+  # Or for sigmoid:
+  # freshness_continuous:
+  #   model: sigmoid
+  #   t0_ms: 300         # latency at which freshness has dropped to 0.5
+  #   k_ms: 80           # slope (smaller = sharper transition)
+  #   floor: 0.05
+
+  # ── Weighted disagreement penalty (opt-in) ──
+  # When enabled, replaces the flat 0.8 multiplier with an entropy-based
+  # penalty that scales smoothly with how much sensors disagree and how
+  # much weight each disagreeing sensor carries. alpha controls strength.
+  # weighted_disagreement:
+  #   enabled: true
+  #   alpha: 0.4         # 0 disables; 0.4 ≈ legacy 0.8 at maximum disagreement
+
+  # ── Adversarial sensor detection (opt-in) ──
+  # Residual-based outlier check: flags and down-weights any single sensor
+  # that strongly disagrees with the consensus of all others while claiming
+  # high reported quality. Mitigates the spoofing weakness called out in the
+  # README. Requires at least 3 sensors to activate.
+  # adversarial_detection:
+  #   enabled: true
+  #   suspect_threshold: 0.7  # how strong the opposing consensus must be (0..1)
+  #   quality_floor: 0.6      # min reported quality for a sensor to be flagged
+
+  # ── Kalman filter baseline parameters (opt-in) ──
+  # Used when fusion method = kalman_filter. Provides a credible defence-grade
+  # benchmark vs. confidence_weighted fusion (rather than only toy baselines).
+  # kalman:
+  #   process_variance: 0.05
+  #   sensor_variance_floor: 0.02
+  #   variance_scale: 0.5
+  #   threshold: 0.5
+  #   decay: 1.0           # 1.0 = persistent target; <1.0 = mean-reverting
+
+  # Freshness brackets: how latency maps to a trust weight (legacy bracketed mode).
   # Increase max_latency_ms values for high-latency environments (e.g. satellite comms).
   freshness_brackets:
     - max_latency_ms: 100

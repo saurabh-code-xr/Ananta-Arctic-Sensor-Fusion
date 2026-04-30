@@ -1,0 +1,84 @@
+# Demo config that enables all the new opt-in features.
+# Use with: python run_experiment.py --config config_demo.yaml --scenario conflict_spoofing
+
+system:
+  name: "Ananta Meridian Data Fusion (demo)"
+  version: "0.3.0-improvements"
+  log_level: "INFO"
+  log_to_file: false
+  log_file: "logs/fusion.log"
+
+fusion:
+  detection_threshold: 0.6
+  disagreement_penalty: 0.8
+
+  freshness_continuous:
+    model: exponential
+    tau_ms: 250
+    floor: 0.05
+
+  weighted_disagreement:
+    enabled: true
+    alpha: 0.4
+
+  adversarial_detection:
+    enabled: true
+    suspect_threshold: 0.7
+    quality_floor: 0.6
+
+  kalman:
+    process_variance: 0.05
+    sensor_variance_floor: 0.02
+    variance_scale: 0.5
+    threshold: 0.5
+    decay: 1.0
+
+  freshness_brackets:
+    - max_latency_ms: 100
+      factor: 1.0
+    - max_latency_ms: 200
+      factor: 0.9
+    - max_latency_ms: 300
+      factor: 0.75
+    - max_latency_ms: 400
+      factor: 0.55
+    - max_latency_ms: 600
+      factor: 0.35
+    - max_latency_ms: 99999
+      factor: 0.2
+
+  reliability_bands:
+    - min_avg: 0.8
+      factor: 1.0
+    - min_avg: 0.6
+      factor: 0.9
+    - min_avg: 0.4
+      factor: 0.75
+    - min_avg: 0.0
+      factor: 0.6
+
+confidence:
+  thresholds:
+    high:
+      min_score: 0.8
+      min_quality: 0.8
+      max_latency_ms: 200
+      allow_disagreement: false
+    medium:
+      min_score: 0.5
+      min_quality: 0.55
+      max_latency_ms: 450
+  sensor_flags:
+    low_quality_threshold: 0.5
+    high_latency_threshold: 400
+
+experiment:
+  results_dir: "results"
+  save_results: true
+
+sensors:
+  source: "simulation"
+  expected_sensors:
+    - "A"
+    - "B"
+    - "C"
