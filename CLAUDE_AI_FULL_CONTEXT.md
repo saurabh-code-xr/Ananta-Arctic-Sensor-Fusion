@@ -1527,3 +1527,217 @@ python -m pytest tests/ -v
 *Ananta Meridian Inc. — Defence / Dual-Use Software | TRL 3*
 
 ---
+
+
+======================================================================
+SECTION: PRECISE TECHNICAL FACT SHEET (verified April 30 2026)
+Use these answers verbatim when writing the IDEaS proposal or any
+external document. All facts confirmed by running the actual code.
+======================================================================
+
+Q1: HOW MANY TESTS ARE PASSING AND BREAKDOWN BY FILE?
+------------------------------------------------------
+Total: 112 tests, all passing (0 failures, 0 errors)
+Run time: 0.85 seconds
+
+Breakdown:
+  test_validation.py    21 tests  — input validation, error handling
+  test_freshness.py     18 tests  — continuous decay models (exp/linear/sigmoid)
+  test_confidence.py    12 tests  — HIGH/MEDIUM/LOW threshold logic
+  test_fusion.py        12 tests  — fusion engine, weighting, disagreement
+  test_reliability.py   12 tests  — reliability memory, history updates
+  test_disagreement.py   9 tests  — entropy-based disagreement penalty
+  test_metrics.py        8 tests  — ROC/AUC/precision/recall/F1
+  test_config.py         8 tests  — YAML config loading, defaults, overrides
+  test_kalman.py         6 tests  — Kalman filter baseline
+  test_adversarial.py    6 tests  — leave-one-out spoofing detection
+                        ---
+  TOTAL:               112 tests
+
+
+Q2: HAS THE LLM REASONING LAYER BEEN BUILT?
+--------------------------------------------
+NO. Not built yet.
+
+There is NO Anthropic API integration, NO Claude API calls, NO LLM
+component anywhere in the codebase. Confirmed by grep across all .py files.
+
+What exists instead: the confidence_engine.py generates plain-text
+reason strings (e.g. "sensor disagreement detected", "high latency on
+DJI_S4") and a list of recommended actions — but these are rule-based
+string templates, not LLM-generated natural language.
+
+The LLM reasoning layer is documented in ARCHITECTURE.md as "COMING NEXT"
+and in FUTURE_IMPROVEMENTS.md as Priority 1. It requires an Anthropic API
+key. It has NOT been started.
+
+This is an honest gap. It is the next thing to build.
+
+
+Q3: WHAT DATA SOURCES ARE INTEGRATED AND WORKING?
+--------------------------------------------------
+Five adapters exist in data_fusion/adapters/:
+
+1. CSV adapter (csv_adapter.py)
+   STATUS: Working, tested
+   What it does: reads any CSV with sensor_id, detected, quality, latency_ms columns
+   Used by: analyze_dji_flight.py, analyze_ais.py, analyze_arctic_ais.py
+
+2. NOAA weather adapter (noaa_adapter.py)
+   STATUS: Built, NOT tested with real key (no token in repo)
+   What it does: fetches GHCND weather station data from NOAA CDO API,
+   maps temperature/wind/precipitation to quality/latency/detected
+   Requires: free NOAA API token from ncdc.noaa.gov
+
+3. OpenWeather adapter (openweather_adapter.py)
+   STATUS: Built, NOT tested with real key (no key in repo)
+   What it does: fetches current weather from multiple lat/lon locations,
+   maps weather conditions (clouds, wind, visibility) to sensor quality
+   Requires: free OpenWeatherMap API key
+
+4. OpenAQ adapter (openaq_adapter.py)
+   STATUS: Built, no auth required (free public API)
+   What it does: fetches air quality readings from monitoring stations
+
+5. USGS adapter (usgs_adapter.py)
+   STATUS: Built, no auth required (free public API)
+   What it does: fetches seismic event data (earthquake magnitude/depth)
+
+IMPORTANT: NOAA and OpenWeather adapters are architecturally complete but
+have NOT been run with live API calls. They are untested with real data.
+The CSV adapter is the only one validated end-to-end with real datasets
+(DJI drone + Arctic AIS).
+
+
+Q4: DJI MINI 2 VALIDATION — EXACT RESULTS
+------------------------------------------
+File: dji_validation_results.txt (permanent copy)
+Script: analyze_dji_flight.py
+Raw log: Evidence Logs/fc_log.log (binary DJI fc_log format)
+Parsed CSV: flight_data.csv (69 records)
+
+Results:
+  Records parsed:  69
+  Time steps:      14 (5 records per step)
+  HIGH confidence:  0  (0%)
+  MEDIUM confidence: 0  (0%)
+  LOW confidence:  14  (100%)
+
+Key events by step:
+  Steps 1-8:  pre-flight/ground phase — uniform low quality (avg 0.025-0.029)
+  Step 9:     quality improves to 0.182 as flight begins
+  Steps 10-13: SENSOR DISAGREEMENT flagged — some sensors 0.74, others low
+  Step 14:    HIGH LATENCY flagged on DJI_S4 (364ms average)
+
+Conclusion: 14/14 time steps correctly rated LOW. System did not false-alarm
+or produce confident output on genuinely degraded hardware.
+
+
+Q5: ALL 5 SCENARIO NAMES EXACTLY AS IN scenarios.py
+-----------------------------------------------------
+1. "gradual_degradation"
+   Simulates: all sensors degrade progressively over time — models physical
+   wear, icing, or environmental drift in Arctic/maritime context.
+
+2. "arctic_sensor_dropout"
+   Simulates: sensors drop out sequentially due to extreme cold or icing.
+   Latency spikes precede full dropout.
+
+3. "conflict_spoofing"
+   Simulates: one sensor is spoofed or miscalibrated and reports the
+   opposite of all others. Models adversarial EW interference.
+
+4. "stale_data"
+   Simulates: sensors maintain quality but latency rises sharply — data
+   becomes stale. Models comms degradation or network disruption.
+
+5. "full_sensor_failure"
+   Simulates: catastrophic event causes all sensors to fail sequentially.
+   Tests graceful degradation to LOW confidence as sensors go offline.
+
+
+Q6: CURRENT ARCHITECTURE — MODULE BY MODULE
+--------------------------------------------
+The system has 5 functional layers:
+
+fusion_engine.py (Layer 3 — the brain)
+  Takes a list of sensor dicts [{sensor, detected, quality, latency}].
+  For each sensor: weight = quality × freshness_factor(latency) ×
+  reliability_history_factor × adversarial_downweight.
+  Applies disagreement penalty if sensors contradict.
+  Outputs: weighted_detection_score, fused_detection (bool), per-sensor
+  weights, disagreement state.
+
+confidence_engine.py (Layer 4 — interpretation)
+  Takes fusion output + raw sensor data.
+  Applies configurable thresholds (HIGH/MEDIUM/LOW) based on score,
+  average quality, average latency, disagreement presence.
+  Outputs: level (HIGH/MEDIUM/LOW), reasons (list of strings),
+  actions (list of recommended operator actions).
+
+reliability_memory.py (Layer 3 — memory)
+  Tracks each sensor's historical quality×freshness scores in a rolling
+  window. Sensors with poor history get downweighted in future steps.
+  This is stateful — it persists across time steps in a session.
+
+sensor_simulator.py (Layer 1 — scenario input)
+  Applies degradation rules (dropout, latency spike, quality decay,
+  spoofing) to base sensor readings to generate scenario time steps.
+  Used by the 5 built-in scenarios.
+
+freshness.py (Layer 2 — pre-processing)
+  Converts latency_ms to a [0,1] freshness weight using continuous
+  exponential decay (default, tau_ms=500ms) or legacy bracket table.
+  Environment presets: marine (tau=500), drone (tau=200), AIS (tau=900,000).
+
+adversarial.py (Layer 2 — pre-processing)
+  Leave-one-out residual check: if one sensor claims high quality but
+  all others disagree, flags it as a potential spoof/outlier and
+  downweights it. Requires minimum 3 sensors to activate.
+
+disagreement.py (Layer 3)
+  Shannon entropy-based disagreement penalty. Scales smoothly with how
+  many sensors disagree and how much weight they carry.
+
+How they connect:
+  scenarios.py → sensor_simulator.py → fusion_engine.py (uses freshness.py +
+  adversarial.py + disagreement.py + reliability_memory.py) →
+  confidence_engine.py → operator output (HIGH/MEDIUM/LOW + reasons + actions)
+
+
+Q7: WHAT IS EXPLICITLY NOT BUILT YET (TRL 4 GAPS)
+---------------------------------------------------
+The following DO NOT exist anywhere in the codebase:
+
+- LLM / Anthropic API integration (planned, not started)
+- Any machine learning or learned weights (zero sklearn, torch, tensorflow)
+- Bayesian uncertainty propagation (Kalman filter exists as a baseline
+  comparison only — it does not drive the main fusion logic)
+- Knowledge graph
+- Deep learning of any kind
+- Real-time streaming data ingestion
+- Any database or persistent storage beyond JSON result files
+- Multi-platform deployment (no Docker, no API server, no REST endpoints)
+- Actual live NOAA or OpenWeather API calls validated with real data
+
+All fusion logic is deterministic and rule-based (with configurable
+parameters). The system is entirely interpretable and auditable —
+which is appropriate and intentional for TRL 3 defence software.
+
+
+Q8: GITHUB REPO — URL, VISIBILITY, README SUMMARY
+--------------------------------------------------
+URL: https://github.com/saurabh-code-xr/Ananta-Arctic-Sensor-Fusion
+Visibility: PUBLIC
+
+What the README says the system does (first paragraph):
+"Combines inputs from multiple sensors operating under degraded conditions
+and produces a single fused detection output with an operator-facing
+confidence level (HIGH / MEDIUM / LOW). Designed for: Arctic navigation
+and situational awareness, remote/maritime sensing environments, autonomous
+systems in comms-degraded or environmentally stressed conditions, any
+heterogeneous multi-sensor network where individual sensors are unreliable."
+
+======================================================================
+END OF FACT SHEET
+======================================================================
