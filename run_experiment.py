@@ -8,8 +8,13 @@ Usage:
     python run_experiment.py --compare --scenario stale_data
     python run_experiment.py --source noaa
     python run_experiment.py --source openweather
+    python run_experiment.py --source usgs
     python run_experiment.py --source csv --csv-file data/my_sensors.csv
     python run_experiment.py --config custom_config.yaml --scenario gradual_degradation
+
+    # With LLM operator guidance (uses one Anthropic API call):
+    python run_experiment.py --scenario arctic_sensor_dropout --llm
+    python run_experiment.py --source noaa --llm --mission "Arctic weather station monitoring"
 """
 
 import argparse
@@ -20,9 +25,9 @@ from data_fusion.scenarios import SCENARIOS
 from experiments.runner import FUSION_METHODS, run_experiment, run_from_steps, print_result
 
 
-def run_all_scenarios(method: str, config: dict) -> None:
+def run_all_scenarios(method: str, config: dict, llm_enabled: bool = False, mission_context: str = "") -> None:
     for name in SCENARIOS:
-        result = run_experiment(name, method=method, config=config)
+        result = run_experiment(name, method=method, config=config, llm_enabled=llm_enabled, mission_context=mission_context)
         print_result(result)
 
 
@@ -41,7 +46,7 @@ def compare_methods(scenario_name: str, config: dict) -> None:
     print()
 
 
-def run_live_source(source: str, method: str, csv_file: str | None, config: dict) -> None:
+def run_live_source(source: str, method: str, csv_file: str | None, config: dict, llm_enabled: bool = False, mission_context: str = "") -> None:
     if source == "noaa":
         from data_fusion.adapters.noaa_adapter import build_noaa_adapter_from_config
         adapter = build_noaa_adapter_from_config(config)
@@ -74,7 +79,7 @@ def run_live_source(source: str, method: str, csv_file: str | None, config: dict
         print(f"No data returned from {source} adapter.")
         sys.exit(1)
 
-    result = run_from_steps(steps, source_name=source, method=method, config=config)
+    result = run_from_steps(steps, source_name=source, method=method, config=config, llm_enabled=llm_enabled, mission_context=mission_context)
     print_result(result)
 
 
@@ -91,20 +96,24 @@ def main() -> None:
     parser.add_argument("--csv-file", help="Path to CSV file (used with --source csv)")
     parser.add_argument("--config", default=None, help="Path to config YAML (default: config.yaml)")
     parser.add_argument("--no-save", action="store_true", help="Skip saving results to disk")
+    parser.add_argument("--llm",     action="store_true",
+                        help="Enable LLM operator guidance on final fused result (1 API call)")
+    parser.add_argument("--mission", default="Defence sensor fusion",
+                        help="Mission context string passed to LLM (use with --llm)")
     args = parser.parse_args()
 
     config = cfg_module.load(args.config)
 
     if args.all:
-        run_all_scenarios(args.method, config)
+        run_all_scenarios(args.method, config, llm_enabled=args.llm, mission_context=args.mission)
     elif args.compare:
         if not args.scenario:
             parser.error("--compare requires --scenario")
         compare_methods(args.scenario, config)
     elif args.source:
-        run_live_source(args.source, args.method, args.csv_file, config)
+        run_live_source(args.source, args.method, args.csv_file, config, llm_enabled=args.llm, mission_context=args.mission)
     elif args.scenario:
-        result = run_experiment(args.scenario, method=args.method, save=not args.no_save, config=config)
+        result = run_experiment(args.scenario, method=args.method, save=not args.no_save, config=config, llm_enabled=args.llm, mission_context=args.mission)
         print_result(result)
     else:
         parser.print_help()

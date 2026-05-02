@@ -27,6 +27,7 @@ from data_fusion.reliability_memory import update_reliability_history
 from data_fusion import baselines
 from data_fusion.kalman_baseline import kalman_filter, reset_kalman_state
 from experiments.metrics import detection_metrics, roc_curve
+from llm_operator_layer import generate_operator_guidance
 
 logger = get_logger("runner")
 
@@ -85,6 +86,8 @@ def run_experiment(
     method: str = "confidence_weighted",
     save: bool = True,
     config: dict | None = None,
+    llm_enabled: bool = False,
+    mission_context: str = "Defence sensor fusion experiment",
 ) -> dict:
     """
     Run a scenario through a fusion method and return structured results.
@@ -160,17 +163,37 @@ def run_experiment(
         **detection_metrics(step_results),
     }
 
+    # LLM operator guidance -- runs once on the final fused step
+    llm_guidance = None
+    if llm_enabled and step_results:
+        last = step_results[-1]
+        llm_guidance = generate_operator_guidance(
+            fusion_result={
+                "confidence_level":    last["confidence_level"],
+                "weighted_score":      last["weighted_score"],
+                "fused_detection":     last["fused_detection"],
+                "reasons":             last["confidence_reasons"],
+                "recommended_actions": last["confidence_actions"],
+            },
+            sensor_data=scenario["steps"][-1],
+            mission_context=mission_context,
+        )
+        logger.info("LLM guidance generated (source=%s)", llm_guidance.get("_source"))
+
     timestamp = datetime.now().isoformat(timespec="seconds")
     experiment_id = f"{timestamp[:10].replace('-', '')}_{scenario_name}_{method}"
 
     result = {
-        "experiment_id": experiment_id,
-        "scenario": scenario_name,
+        "experiment_id":      experiment_id,
+        "scenario":           scenario_name,
         "scenario_description": scenario["description"],
-        "method": method,
-        "timestamp": timestamp,
-        "steps": step_results,
-        "summary": summary,
+        "method":             method,
+        "mission_context":    mission_context,
+        "llm_enabled":        llm_enabled,
+        "timestamp":          timestamp,
+        "steps":              step_results,
+        "summary":            summary,
+        "llm_guidance":       llm_guidance,
     }
 
     if save:
@@ -190,6 +213,8 @@ def run_from_steps(
     method: str = "confidence_weighted",
     save: bool = True,
     config: dict | None = None,
+    llm_enabled: bool = False,
+    mission_context: str = "Live sensor fusion",
 ) -> dict:
     """
     Run fusion on externally provided time steps (from an adapter).
@@ -242,17 +267,37 @@ def run_from_steps(
         },
     }
 
+    # LLM operator guidance -- runs once on the final fused step
+    llm_guidance = None
+    if llm_enabled and step_results:
+        last = step_results[-1]
+        llm_guidance = generate_operator_guidance(
+            fusion_result={
+                "confidence_level":    last["confidence_level"],
+                "weighted_score":      last["weighted_score"],
+                "fused_detection":     last["fused_detection"],
+                "reasons":             last["confidence_reasons"],
+                "recommended_actions": last["confidence_actions"],
+            },
+            sensor_data=steps[-1],
+            mission_context=mission_context,
+        )
+        logger.info("LLM guidance generated (source=%s)", llm_guidance.get("_source"))
+
     timestamp = datetime.now().isoformat(timespec="seconds")
     experiment_id = f"{timestamp[:10].replace('-', '')}_{source_name}_{method}"
 
     result = {
-        "experiment_id": experiment_id,
-        "scenario": source_name,
+        "experiment_id":        experiment_id,
+        "scenario":             source_name,
         "scenario_description": f"Live data from {source_name}",
-        "method": method,
-        "timestamp": timestamp,
-        "steps": step_results,
-        "summary": summary,
+        "method":               method,
+        "mission_context":      mission_context,
+        "llm_enabled":          llm_enabled,
+        "timestamp":            timestamp,
+        "steps":                step_results,
+        "summary":              summary,
+        "llm_guidance":         llm_guidance,
     }
 
     if save:

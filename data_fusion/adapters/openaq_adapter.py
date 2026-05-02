@@ -21,7 +21,7 @@ from data_fusion.logger import get_logger
 
 logger = get_logger("adapter.openaq")
 
-OPENAQ_BASE_URL = "https://api.openaq.org/v2"
+OPENAQ_BASE_URL = "https://api.openaq.org/v3"   # v2 deprecated; updated to v3
 
 
 class OpenAQAdapter(SensorAdapter):
@@ -76,16 +76,18 @@ class OpenAQAdapter(SensorAdapter):
             return []
 
     def _fetch_country(self, requests, country: str) -> list[dict]:
-        """Fetch latest measurements for stations in a country."""
+        """Fetch latest measurements for stations in a country (OpenAQ v3)."""
         try:
+            # v3 endpoint: /locations with latest measurements
             response = requests.get(
-                f"{OPENAQ_BASE_URL}/latest",
+                f"{OPENAQ_BASE_URL}/locations",
                 params={
-                    "country": country,
+                    "country_id": country,
                     "limit": self.limit,
-                    "sort": "lastUpdated",
-                    "order": "desc",
+                    "order_by": "lastUpdated",
+                    "sort_order": "desc",
                 },
+                headers={"Accept": "application/json"},
                 timeout=10,
             )
             response.raise_for_status()
@@ -106,47 +108,42 @@ class OpenAQAdapter(SensorAdapter):
 
     def _result_to_sensor(self, result: dict) -> dict | None:
         """
-        Map OpenAQ measurement to sensor reading format.
+        Map OpenAQ v3 location record to sensor reading format.
 
-        quality  : normalized from PM2.5 (0 µg/m³ = 1.0, >100 µg/m³ = 0.1)
+        quality  : normalized from PM2.5 (0 µg/m3 = 1.0, >100 µg/m3 = 0.1)
         latency  : proxy from PM10 (high PM10 = measurement difficulty)
-        detected : True if PM2.5 > 35 µg/m³ (EPA unhealthy threshold)
+        detected : True if PM2.5 > 35 µg/m3 (EPA unhealthy threshold)
         """
-        measurements = result.get("measurements", [])
-        if not measurements:
-            return None
-
-        # Extract PM2.5 and PM10
+        # v3 uses 'sensors' list per location
+        sensors_list = result.get("sensors", [])
         pm25 = None
         pm10 = None
-        for m in measurements:
-            if m.get("parameter") == "pm25":
-                pm25 = m.get("value", 0)
-            elif m.get("parameter") == "pm10":
-                pm10 = m.get("value", 0)
+
+        for s in sensors_list:
+            param = s.get("parameter", {}).get("name", "")
+            value = s.get("latest", {}).get("value")
+            if value is None:
+                continue
+            if param == "pm25":
+                pm25 = float(value)
+            elif param == "pm10":
+                pm10 = float(value)
 
         if pm25 is None:
             return None
 
-        # Quality: PM2.5 to quality mapping (0-100 µg/m³ maps to 1.0-0.1)
-        quality = max(0.1, round(1.0 - (pm25 / 100.0), 3))
-
-        # Latency proxy: PM10 increases effective measurement latency
+        quality  = max(0.1, round(1.0 - (pm25 / 100.0), 3))
         pm10_val = pm10 if pm10 is not None else pm25
-        latency = round(100 + (pm10_val / 50.0) * 300, 1)
-
-        # Detected: PM2.5 > 35.4 µg/m³ (EPA "Unhealthy for Sensitive Groups")
+        latency  = round(100 + (pm10_val / 50.0) * 300, 1)
         detected = pm25 > 35.4
 
-        location = result.get("location", "unknown")
-        city = result.get("city", "")
-        name = f"{city}/{location}" if city else location
+        name = result.get("name", result.get("id", "unknown"))
 
         return {
-            "sensor": name,
+            "sensor":   str(name),
             "detected": detected,
-            "quality": quality,
-            "latency": latency,
+            "quality":  quality,
+            "latency":  latency,
         }
 
 
