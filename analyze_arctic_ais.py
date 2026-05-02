@@ -10,6 +10,8 @@ This demonstrates the engine's ability to distinguish:
 Usage:
     python analyze_arctic_ais.py --csv data/arctic_ais_parsed.csv
     python analyze_arctic_ais.py --csv data/arctic_ais_parsed.csv --step 6
+    python analyze_arctic_ais.py --csv data/arctic_ais_parsed.csv --llm
+    python analyze_arctic_ais.py --csv data/arctic_ais_parsed.csv --llm --mission "Northwest Passage patrol"
 """
 
 import csv
@@ -26,10 +28,12 @@ from data_fusion.fusion_engine import fuse_sensors
 from data_fusion.confidence_engine import compute_confidence
 from data_fusion.reliability_memory import update_reliability_history
 from data_fusion import config as cfg_module
+from llm_operator_layer import generate_operator_guidance
 
-DEFAULT_STEP_SIZE = 6   # 6 vessels per time step (matches our 6-vessel dataset)
-DEFAULT_CONFIG    = os.path.join(_HERE, "config_arctic_ais.yaml")
-RESULTS_DIR       = os.path.join(_HERE, "results")
+DEFAULT_STEP_SIZE   = 6   # 6 vessels per time step (matches our 6-vessel dataset)
+DEFAULT_CONFIG      = os.path.join(_HERE, "config_arctic_ais.yaml")
+DEFAULT_MISSION     = "Arctic maritime patrol — Canadian Arctic Archipelago"
+RESULTS_DIR         = os.path.join(_HERE, "results")
 
 
 def load_parsed_ais(csv_path: str) -> list[dict]:
@@ -75,12 +79,22 @@ def save_results(payload: dict, results_dir: str) -> str:
     return out_path
 
 
-def run_analysis(csv_path: str, step_size: int, config_path: str | None = None) -> dict:
+def run_analysis(
+    csv_path: str,
+    step_size: int,
+    config_path: str | None = None,
+    llm_enabled: bool = False,
+    mission_context: str = DEFAULT_MISSION,
+) -> dict:
     print("=" * 68)
     print("ANANTA MERIDIAN -- Canadian Arctic AIS Vessel Fusion Analysis")
     print("=" * 68)
     print("Dataset: Calibrated synthetic Arctic AIS (6 vessels, 2024-08-15)")
     print("Grounded in: PAME ASTD 2023, Arctic Council Shipping Report 2024")
+    if llm_enabled:
+        print(f"LLM operator guidance: ENABLED (mission: {mission_context})")
+    else:
+        print("LLM operator guidance: DISABLED (use --llm to enable)")
     print("=" * 68)
 
     config = cfg_module.load(config_path)
@@ -101,6 +115,11 @@ def run_analysis(csv_path: str, step_size: int, config_path: str | None = None) 
     reliability_history: dict = {}
     step_results = []
     confidence_history = []
+
+    # Track the final step's outputs for LLM summary
+    last_fusion     = None
+    last_sensors    = None
+    last_confidence = None
 
     for step_num, sensors in enumerate(steps):
         fusion     = fuse_sensors(sensors, reliability_history=reliability_history, config=config)
@@ -129,6 +148,10 @@ def run_analysis(csv_path: str, step_size: int, config_path: str | None = None) 
             "actions":          confidence.get("actions", []),
         })
 
+        last_fusion     = fusion
+        last_sensors    = sensors
+        last_confidence = confidence
+
     # Summary
     total  = len(confidence_history)
     high   = confidence_history.count("HIGH")
@@ -144,15 +167,57 @@ def run_analysis(csv_path: str, step_size: int, config_path: str | None = None) 
     print(f"LOW confidence      : {low}  ({low / total * 100:.0f}%)")
     print(f"Degradation detected: {'YES' if low > 0 or medium > 0 else 'NO'}")
 
+    # LLM operator guidance — runs once on the final fused result
+    llm_guidance = None
+    if llm_enabled and last_fusion is not None:
+        print("\n" + "=" * 68)
+        print("LLM OPERATOR GUIDANCE (final time step)")
+        print("=" * 68)
+
+        # Build confidence result dict expected by the LLM layer
+        confidence_result = {
+            "confidence_level":    last_confidence["level"],
+            "weighted_score":      last_fusion.get("weighted_detection_score", 0.0),
+            "fused_detection":     last_fusion["fused_detection"],
+            "reasons":             last_confidence["reasons"],
+            "recommended_actions": last_confidence.get("actions", []),
+        }
+
+        llm_guidance = generate_operator_guidance(
+            fusion_result=confidence_result,
+            sensor_data=last_sensors,
+            mission_context=mission_context,
+        )
+
+        source = llm_guidance.get("_source", "unknown")
+        model  = llm_guidance.get("_model", "N/A")
+        error  = llm_guidance.get("_error")
+
+        print(f"Source  : {source}  |  Model: {model}")
+        if error:
+            print(f"[WARN] Fallback reason: {error}")
+        print(f"\nOperator Summary:\n  {llm_guidance['operator_summary']}")
+        print(f"\nThreat Indicators:")
+        for t in llm_guidance["threat_indicators"]:
+            print(f"  - {t}")
+        print(f"\nRecommended Actions:")
+        for a in llm_guidance["recommended_actions"]:
+            print(f"  - {a}")
+        print(f"\nConfidence Rationale:\n  {llm_guidance['confidence_rationale']}")
+        print(f"\nEscalation Required: {llm_guidance['escalation_required']}")
+
     results_payload = {
         "source":          csv_path,
-        "dataset":         "Calibrated synthetic Arctic AIS — 6 Canadian Arctic vessels",
+        "dataset":         "Calibrated synthetic Arctic AIS -- 6 Canadian Arctic vessels",
         "date_range":      "2024-08-15",
         "step_size":       step_size,
+        "mission_context": mission_context,
+        "llm_enabled":     llm_enabled,
         "total_records":   len(records),
         "total_steps":     total,
         "summary":         {"high": high, "medium": medium, "low": low},
         "steps":           step_results,
+        "llm_guidance":    llm_guidance,
     }
 
     out_path = save_results(results_payload, RESULTS_DIR)
@@ -165,18 +230,28 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Run Arctic AIS data through Ananta Meridian fusion engine"
     )
-    parser.add_argument("--csv",  required=True,
+    parser.add_argument("--csv",     required=True,
                         help="Parsed Arctic AIS CSV (from parse_arctic_ais.py)")
-    parser.add_argument("--step",   type=int, default=DEFAULT_STEP_SIZE,
+    parser.add_argument("--step",    type=int, default=DEFAULT_STEP_SIZE,
                         help=f"Records per time step (default: {DEFAULT_STEP_SIZE})")
-    parser.add_argument("--config", default=DEFAULT_CONFIG,
-                        help=f"Config YAML path (default: config_arctic_ais.yaml)")
+    parser.add_argument("--config",  default=DEFAULT_CONFIG,
+                        help="Config YAML path (default: config_arctic_ais.yaml)")
+    parser.add_argument("--llm",     action="store_true",
+                        help="Enable LLM operator guidance on final fused result")
+    parser.add_argument("--mission", default=DEFAULT_MISSION,
+                        help="Mission context string passed to LLM (use with --llm)")
     args = parser.parse_args()
 
     if not os.path.isfile(args.csv):
         raise FileNotFoundError(f"CSV not found: {args.csv}")
 
-    run_analysis(args.csv, args.step, config_path=args.config)
+    run_analysis(
+        csv_path=args.csv,
+        step_size=args.step,
+        config_path=args.config,
+        llm_enabled=args.llm,
+        mission_context=args.mission,
+    )
 
 
 if __name__ == "__main__":
