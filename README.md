@@ -2,13 +2,13 @@
 
 A software-first, hardware-agnostic, confidence-aware sensor fusion system for degraded environments.
 
-**Current TRL:** 3 (proof of concept validated in simulated degraded sensing scenarios)
+**Current TRL:** 3 (proof of concept validated against real hardware data and live sensor feeds)
 
 ---
 
 ## What It Does
 
-Combines inputs from multiple sensors operating under degraded conditions and produces a single fused detection output with an operator-facing confidence level (HIGH / MEDIUM / LOW).
+Combines inputs from multiple sensors operating under degraded conditions and produces a single fused detection output with an operator-facing confidence level (HIGH / MEDIUM / LOW) and plain-language CAF operator guidance via an integrated LLM reasoning layer.
 
 Designed for:
 - Arctic navigation and situational awareness
@@ -33,14 +33,26 @@ python run_experiment.py --compare --scenario conflict_spoofing
 # Run all scenarios
 python run_experiment.py --all
 
-# Use real NOAA weather data (requires free API token)
-python run_experiment.py --source noaa
+# Use live NWS Arctic weather data (no API key required)
+python run_experiment.py --source nws
 
 # Use OpenWeatherMap live data (requires free API key)
 python run_experiment.py --source openweather
 
+# Use USGS live seismic data (no API key required)
+python run_experiment.py --source usgs
+
 # Use your own sensor CSV file
 python run_experiment.py --source csv --csv-file data/your_sensors.csv
+
+# Run Arctic AIS pipeline with LLM operator guidance
+python analyze_arctic_ais.py --csv data/arctic_ais_parsed.csv --llm
+
+# Run DJI drone pipeline with LLM operator guidance
+python analyze_dji_flight.py --llm
+
+# Run any scenario with LLM guidance and mission context
+python run_experiment.py --scenario arctic_sensor_dropout --llm --mission "Northwest Passage patrol"
 ```
 
 ---
@@ -129,12 +141,10 @@ timestamp,sensor_id,detected,quality,latency_ms
 2024-01-01T00:00:00,RADAR_1,False,0.43,420
 ```
 
-**Option B: Live API** (NOAA weather stations)
+**Option B: Live NWS Arctic weather (no key required)**
 
-Set your free NOAA token in `config.yaml` or as env var:
 ```bash
-export NOAA_TOKEN=your_token_here
-python run_experiment.py --source noaa
+python run_experiment.py --source nws
 ```
 
 **Option C: Direct Python integration**
@@ -155,23 +165,33 @@ result = run_from_steps(steps, source_name="your_platform")
 
 ```
 data_fusion/
-├── utils.py            # Freshness factor, input validation (shared)
-├── fusion_engine.py    # Confidence-weighted fusion core
-├── confidence_engine.py# HIGH/MEDIUM/LOW confidence evaluation
-├── reliability_memory.py# Per-sensor reliability tracking
-├── scenarios.py        # Simulated degraded sensing scenarios (5)
-├── baselines.py        # Naive baselines for benchmarking (3)
-├── config.py           # Config loader (config.yaml)
-├── logger.py           # Logging setup
+├── utils.py                # Freshness factor, input validation (shared)
+├── fusion_engine.py        # Confidence-weighted fusion core
+├── confidence_engine.py    # HIGH/MEDIUM/LOW confidence evaluation
+├── reliability_memory.py   # Per-sensor reliability tracking
+├── scenarios.py            # Simulated degraded sensing scenarios (5)
+├── baselines.py            # Naive baselines for benchmarking (3)
+├── config.py               # Config loader (config.yaml)
+├── logger.py               # Logging setup
 └── adapters/
-    ├── csv_adapter.py      # Pre-recorded sensor logs
-    ├── noaa_adapter.py     # NOAA weather station data
-    └── openweather_adapter.py # OpenWeatherMap live data
+    ├── csv_adapter.py          # Pre-recorded sensor logs
+    ├── noaa_adapter.py         # NOAA CDO historical weather (token required)
+    ├── nws_adapter.py          # NWS live Arctic weather (no key required)
+    ├── openweather_adapter.py  # OpenWeatherMap live data
+    ├── usgs_adapter.py         # USGS live seismic data (no key required)
+    └── openaq_adapter.py       # OpenAQ air quality network
+
+llm_operator_layer.py       # LLM reasoning layer (claude-sonnet-4-5): converts
+                            # fusion output into CAF operator guidance
+                            # (operator_summary, threat_indicators,
+                            # recommended_actions, confidence_rationale,
+                            # escalation_required). Graceful fallback to
+                            # rule-based output if API unavailable.
 
 experiments/
 └── runner.py           # Repeatable experiment runner + metrics
 
-tests/                  # 112 tests, all passing
+tests/                  # 133 tests, all passing
 results/                # Experiment output (JSON)
 config.yaml             # All tunable parameters
 ```
@@ -215,7 +235,7 @@ python run_experiment.py --config config_demo.yaml --compare --scenario stale_da
 
 - **Collusion vulnerability:** Single-sensor spoofing is now mitigated by the optional residual-based adversarial detector (`fusion.adversarial_detection.enabled = true`). However, when **multiple** sensors collude (>= half the network is compromised), the leave-one-out residual check flags the truth-teller. Cross-modality consistency checks are needed to address this — see `FUTURE_IMPROVEMENTS.md` §4.
 - **Single-sensor normalisation:** Quality/latency weights only affect the score when multiple sensors are present. Single-sensor detection score is always 0 or 1.
-- **Simulated data only (TRL 3):** Real-world validation with live hardware is the next step (TRL 4).
+- **Real hardware validation complete:** DJI Mini 2 drone telemetry (69 records, 14/14 timesteps correctly assessed LOW confidence), Canadian Arctic AIS vessel tracking (6 vessels, 213 records, satellite and terrestrial feeds), and live NWS Arctic weather data (Barrow 71°N, Nome, Fairbanks, Cold Bay) validated through the same fusion core.
 - **Temporal smoothing only via Kalman baseline:** The default `confidence_weighted` method treats time steps independently. The Kalman baseline now provides a stateful alternative; full multi-target tracking is in `FUTURE_IMPROVEMENTS.md` §5.
 - **Small-sample ROC/AUC:** With 5-step scenarios, AUC values are statistically thin. See `FUTURE_IMPROVEMENTS.md` §10.
 
@@ -225,7 +245,7 @@ python run_experiment.py --config config_demo.yaml --compare --scenario stale_da
 
 ```bash
 python -m pytest tests/ -v
-# 112 tests, all passing
+# 133 tests, all passing
 ```
 
 ---
@@ -234,7 +254,9 @@ python -m pytest tests/ -v
 
 - Python 3.10+
 - `pyyaml` — config file parsing
-- `requests` — live API adapters (NOAA, OpenWeather)
+- `requests` — live API adapters (NWS, NOAA, OpenWeather, USGS)
+- `anthropic` — LLM operator layer
+- `python-dotenv` — API key management
 - `pytest` — testing
 
 ---
@@ -254,9 +276,14 @@ python -m pytest tests/ -v
 | CSV adapter | Done |
 | NOAA adapter | Done |
 | OpenWeatherMap adapter | Done |
-| 112 unit tests passing | Done |
-| Live hardware integration | Next (TRL 4) |
-| Real sensor validation | Next (TRL 4) |
+| NWS live Arctic weather adapter | Done |
+| USGS live seismic adapter | Done |
+| Arctic AIS validation (6 vessels, 213 records) | Done |
+| DJI hardware validation (14/14 timesteps) | Done |
+| LLM operator layer (claude-sonnet-4-5) | Done |
+| 133 unit tests passing | Done |
+| Multi-platform live integration | In Progress |
+| Operator interface development | Next |
 
 ---
 
