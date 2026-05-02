@@ -139,6 +139,16 @@ sensors:
     lon: 18.9
     units: "metric"
 
+  # NWS adapter config (used when source = nws)
+  # National Weather Service — no API key required
+  # Default: four Arctic Alaska stations (Barrow, Nome, Fairbanks, Cold Bay)
+  nws:
+    stations:   # leave empty to use defaults, or override with custom list
+      - {id: "PABR", name: "Barrow_AK",    lat: 71.29, lon: -156.79}
+      - {id: "PAOM", name: "Nome_AK",      lat: 64.51, lon: -165.43}
+      - {id: "PAFA", name: "Fairbanks_AK", lat: 64.80, lon: -147.86}
+      - {id: "PACD", name: "ColdBay_AK",   lat: 55.20, lon: -162.72}
+
   # CSV adapter config (used when source = csv)
   csv:
     file_path: "data/sensor_readings.csv"

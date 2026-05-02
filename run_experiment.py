@@ -59,6 +59,9 @@ def run_live_source(source: str, method: str, csv_file: str | None, config: dict
     elif source == "usgs":
         from data_fusion.adapters.usgs_adapter import build_usgs_adapter_from_config
         adapter = build_usgs_adapter_from_config(config)
+    elif source == "nws":
+        from data_fusion.adapters.nws_adapter import build_nws_adapter_from_config
+        adapter = build_nws_adapter_from_config(config)
     elif source == "csv":
         from data_fusion.adapters.csv_adapter import CSVAdapter
         cfg = config.get("sensors", {}).get("csv", {})
@@ -92,7 +95,7 @@ def main() -> None:
     parser.add_argument("--method", choices=list(FUSION_METHODS), default="confidence_weighted")
     parser.add_argument("--all", action="store_true", help="Run all scenarios")
     parser.add_argument("--compare", action="store_true", help="Compare all methods on one scenario")
-    parser.add_argument("--source", choices=["noaa", "openweather", "openaq", "usgs", "csv"], help="Live data source")
+    parser.add_argument("--source", choices=["noaa", "openweather", "openaq", "usgs", "csv", "nws"], help="Live data source")
     parser.add_argument("--csv-file", help="Path to CSV file (used with --source csv)")
     parser.add_argument("--config", default=None, help="Path to config YAML (default: config.yaml)")
     parser.add_argument("--no-save", action="store_true", help="Skip saving results to disk")
