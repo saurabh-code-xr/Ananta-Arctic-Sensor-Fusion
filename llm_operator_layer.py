@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 # Load .env if present (no-op if python-dotenv not installed or .env absent)
 try:
     from dotenv import load_dotenv
-    load_dotenv()
+    load_dotenv(override=True)   # override=True: .env wins over existing env vars
 except ImportError:
     pass
 
@@ -59,7 +59,7 @@ except ImportError:
 # ---------------------------------------------------------------------------
 # Model configuration
 # ---------------------------------------------------------------------------
-_MODEL = "claude-sonnet-4-20250514"   # user-specified model
+_MODEL = "claude-sonnet-4-5"   # Claude Sonnet — cost-efficient for operator guidance
 
 _SYSTEM_PROMPT = """You are an operational decision-support assistant embedded \
 in a Canadian Armed Forces (CAF) degraded-sensor fusion system. Your role is \
