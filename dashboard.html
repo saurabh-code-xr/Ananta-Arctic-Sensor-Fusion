@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ananta Meridian</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #000000;
+    --surface: rgba(255,255,255,0.025);
+    --surface-2: rgba(255,255,255,0.04);
+    --line: rgba(255,255,255,0.06);
+    --line-strong: rgba(255,255,255,0.10);
+    --text: rgba(255,255,255,0.92);
+    --text-2: rgba(255,255,255,0.62);
+    --text-3: rgba(255,255,255,0.40);
+    --text-4: rgba(255,255,255,0.22);
+    --high: #34D399;
+    --med:  #FBBF24;
+    --low:  #F87171;
+    --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+    font-weight: 400;
+    font-size: 14px;
+    line-height: 1.5;
+    height: 100%;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "ss01", "cv11";
+    letter-spacing: -0.005em;
+  }
+
+  body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .num {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+
+  /* ─── Top bar ───────────────────────────────────────────── */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 22px 40px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .brand {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    color: var(--text-2);
+    text-transform: uppercase;
+  }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+  }
+
+  .step-counter {
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--text-3);
+    letter-spacing: 0.02em;
+  }
+  .step-counter .num { color: var(--text-2); font-weight: 500; }
+
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .ctrl-btn {
+    background: none;
+    border: none;
+    color: var(--text-3);
+    font-family: inherit;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 4px 6px;
+    transition: color 0.2s var(--ease);
+    line-height: 1;
+  }
+  .ctrl-btn:hover { color: var(--text); }
+  .ctrl-btn.play { font-size: 12px; min-width: 16px; text-align: center; }
+  .ctrl-btn.reset { font-size: 11px; letter-spacing: 0.1em; }
+
+  .scenario-select-wrap {
+    position: relative;
+  }
+  .scenario-select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--line-strong);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: 0.05em;
+    padding: 6px 22px 6px 0;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s var(--ease);
+  }
+  .scenario-select:hover { border-bottom-color: var(--text-2); }
+  .scenario-select option {
+    background: #0a0a0a;
+    color: var(--text);
+  }
+  .scenario-select-wrap::after {
+    content: '▾';
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 10px;
+    color: var(--text-3);
+    pointer-events: none;
+  }
+
+  /* ─── Main ─────────────────────────────────────────────── */
+  main {
+    flex: 1;
+    padding: 56px 40px 40px;
+    max-width: 1440px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  /* ─── Confidence Hero ──────────────────────────────────── */
+  .hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin-bottom: 72px;
+  }
+
+  .hero-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    color: var(--text-3);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+
+  .conf-level {
+    font-size: 72px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    color: var(--text);
+    transition: color 0.6s var(--ease);
+    margin-bottom: 18px;
+  }
+  .conf-level.HIGH   { color: var(--high); }
+  .conf-level.MEDIUM { color: var(--med); }
+  .conf-level.LOW    { color: var(--low); animation: softpulse 2s ease-in-out infinite; }
+
+  @keyframes softpulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.55; }
+  }
+
+  .conf-score {
+    font-size: 32px;
+    font-weight: 300;
+    color: rgba(255,255,255,0.80);
+    letter-spacing: -0.02em;
+    margin-bottom: 28px;
+  }
+  .conf-score-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    color: var(--text-3);
+    text-transform: uppercase;
+    margin-right: 12px;
+  }
+  .conf-score-val {
+    transition: color 0.6s var(--ease);
+  }
+
+  .pills {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    border-radius: 999px;
+    background: var(--surface);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    color: var(--text-2);
+    text-transform: uppercase;
+    transition: all 0.4s var(--ease);
+  }
+  .pill .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--text-3);
+    transition: background 0.4s var(--ease);
+  }
+  .pill.ok   .dot { background: var(--high); }
+  .pill.warn .dot { background: var(--med); }
+  .pill.bad  .dot { background: var(--low); }
+  .pill.ok   { color: rgba(52,211,153,0.95); }
+  .pill.warn { color: rgba(251,191,36,0.95); }
+  .pill.bad  { color: rgba(248,113,113,0.95); }
+
+  /* ─── Sensor cards ─────────────────────────────────────── */
+  .sensors {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 56px;
+  }
+
+  .sensor {
+    position: relative;
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 22px 24px;
+    cursor: pointer;
+    transition: background 0.3s var(--ease), transform 0.3s var(--ease);
+  }
+  .sensor:hover { background: var(--surface-2); }
+  .sensor.highlighted {
+    background: var(--surface-2);
+    box-shadow: inset 0 0 0 1px var(--line-strong);
+  }
+  .sensor.suspect {
+    box-shadow: inset 2px 0 0 var(--low);
+  }
+
+  .sensor-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .sensor-name {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    color: var(--text-3);
+    text-transform: uppercase;
+  }
+  .sensor-tag {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    color: var(--low);
+    text-transform: uppercase;
+    padding: 3px 8px;
+    background: rgba(248,113,113,0.10);
+    border-radius: 4px;
+    display: none;
+  }
+  .sensor.suspect .sensor-tag { display: inline-block; }
+
+  .det-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .det-circle {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--high);
+    box-shadow: 0 0 0 0 transparent;
+    transition: all 0.4s var(--ease);
+  }
+  .det-circle.off {
+    background: transparent;
+    box-shadow: inset 0 0 0 1.5px var(--low);
+  }
+  .det-text {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
+  .det-circle.off + .det-text { color: var(--text-3); }
+
+  .sensor-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px 24px;
+  }
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .stat-key {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    color: var(--text-3);
+    text-transform: uppercase;
+  }
+  .stat-val {
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    transition: color 0.6s var(--ease);
+  }
+  .stat-val .num { font-variant-numeric: tabular-nums; }
+  .stat-val .unit {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--text-3);
+    margin-left: 2px;
+    letter-spacing: 0;
+  }
+
+  .qbar {
+    position: relative;
+    height: 2px;
+    border-radius: 1px;
+    background: rgba(255,255,255,0.08);
+    margin-top: 6px;
+    overflow: hidden;
+  }
+  .qbar-fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    background: var(--text-2);
+    border-radius: 1px;
+    transition: width 0.6s var(--ease), background-color 0.6s var(--ease);
+  }
+  .qbar-fill.high { background: var(--high); }
+  .qbar-fill.med  { background: var(--med); }
+  .qbar-fill.low  { background: var(--low); }
+
+  /* ─── Detail toggle / table ────────────────────────────── */
+  .detail-section {
+    margin-bottom: 56px;
+  }
+  .detail-toggle {
+    background: none;
+    border: none;
+    color: var(--text-3);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    cursor: pointer;
+    padding: 4px 0;
+    text-transform: uppercase;
+    transition: color 0.2s var(--ease);
+  }
+  .detail-toggle:hover { color: var(--text); }
+  .detail-toggle .chev {
+    display: inline-block;
+    margin-left: 6px;
+    transition: transform 0.3s var(--ease);
+  }
+  .detail-toggle.open .chev { transform: rotate(180deg); }
+
+  .detail-table {
+    margin-top: 20px;
+    width: 100%;
+    border-collapse: collapse;
+    overflow: hidden;
+    display: none;
+  }
+  .detail-table.open { display: table; }
+  .detail-table th,
+  .detail-table td {
+    padding: 14px 16px;
+    text-align: left;
+    font-size: 13px;
+  }
+  .detail-table th {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    color: var(--text-3);
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--line);
+  }
+  .detail-table tbody tr {
+    border-bottom: 1px solid var(--line);
+    transition: background 0.2s var(--ease);
+  }
+  .detail-table tbody tr:last-child { border-bottom: none; }
+  .detail-table tbody tr.highlighted { background: var(--surface); }
+  .detail-table td { color: var(--text); font-weight: 400; }
+  .detail-table td.k { color: var(--text-2); font-weight: 500; }
+  .detail-table td .num { font-variant-numeric: tabular-nums; }
+  .detail-table td.high { color: var(--high); }
+  .detail-table td.med  { color: var(--med); }
+  .detail-table td.low  { color: var(--low); }
+  .detail-table .det-yes { color: var(--high); }
+  .detail-table .det-no  { color: var(--low); }
+  .detail-table .suspect-mark {
+    color: var(--low);
+    margin-left: 6px;
+    font-size: 10px;
+  }
+
+  /* ─── Timeline ─────────────────────────────────────────── */
+  .timeline {
+    margin-bottom: 56px;
+    padding-top: 32px;
+    border-top: 1px solid var(--line);
+  }
+  .timeline-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    color: var(--text-3);
+    text-transform: uppercase;
+    margin-bottom: 18px;
+  }
+  .timeline-bars {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+  }
+  .tl-step {
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .tl-bar {
+    height: 32px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.06);
+    box-shadow: inset 0 0 0 1px transparent;
+    transition: all 0.4s var(--ease);
+  }
+  .tl-bar.HIGH   { background: var(--high); }
+  .tl-bar.MEDIUM { background: var(--med); }
+  .tl-bar.LOW    { background: var(--low); }
+  .tl-bar.future {
+    background: transparent;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10);
+  }
+  .tl-step.current .tl-bar {
+    box-shadow: 0 0 0 2px #fff, 0 0 0 4px #000;
+  }
+  .tl-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    color: var(--text-3);
+    text-transform: uppercase;
+  }
+  .tl-meta .gt {
+    color: var(--text-3);
+    opacity: 0.7;
+  }
+  .tl-meta .gt.t { color: rgba(52,211,153,0.6); }
+  .tl-meta .gt.f { color: rgba(248,113,113,0.6); }
+
+  /* ─── Operator Guidance ─────────────────────────────────── */
+  .guidance {
+    padding-top: 32px;
+    border-top: 1px solid var(--line);
+    margin-bottom: 40px;
+  }
+  .guidance-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    color: var(--text-3);
+    text-transform: uppercase;
+    margin-bottom: 22px;
+  }
+  .guidance-summary {
+    font-size: 18px;
+    font-weight: 300;
+    color: var(--text);
+    line-height: 1.55;
+    max-width: 780px;
+    letter-spacing: -0.015em;
+    margin-bottom: 36px;
+  }
+
+  .briefing > section {
+    margin-bottom: 24px;
+  }
+  .briefing > section:last-child { margin-bottom: 0; }
+
+  .brief-key {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    color: var(--text-3);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .brief-body {
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--text-2);
+    line-height: 1.55;
+    max-width: 780px;
+  }
+  .brief-body ul {
+    list-style: none;
+    padding: 0;
+  }
+  .brief-body li {
+    padding: 2px 0;
+  }
+
+  .escalation {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .escalation .esc-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-3);
+    transition: background 0.4s var(--ease);
+  }
+  .escalation.required .esc-dot { background: var(--low); }
+  .escalation .esc-text { color: var(--text-2); }
+  .escalation.required .esc-text { color: var(--text); }
+
+  /* ─── Responsive ────────────────────────────────────────── */
+  @media (max-width: 1023px) {
+    main { padding: 32px 24px; }
+    .topbar { padding: 18px 24px; flex-direction: column; gap: 16px; align-items: flex-start; }
+    .sensors { grid-template-columns: 1fr; }
+    .conf-level { font-size: 56px; }
+    .conf-score { font-size: 24px; }
+  }
+
+  /* ─── Animation: count-up ───────────────────────────────── */
+  .stat-val, .conf-score-val {
+    transition: opacity 0.4s var(--ease);
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">Ananta Meridian</div>
+  <div class="topbar-right">
+    <div class="step-counter">Step <span class="num" id="stepNow">1</span> of <span class="num" id="stepTotal">5</span></div>
+    <div class="controls">
+      <button class="ctrl-btn" id="btnPrev" title="Previous (←)">◁</button>
+      <button class="ctrl-btn play" id="btnPlay" title="Play / Pause (Space)">▶</button>
+      <button class="ctrl-btn" id="btnNext" title="Next (→)">▷</button>
+      <button class="ctrl-btn reset" id="btnReset" title="Reset (R)">RESET</button>
+    </div>
+    <div class="scenario-select-wrap">
+      <select id="scenarioSel" class="scenario-select">
+        <option value="gradual_degradation">Gradual Degradation</option>
+        <option value="arctic_sensor_dropout">Arctic Sensor Dropout</option>
+        <option value="conflict_spoofing">Conflict / Spoofing</option>
+        <option value="stale_data">Stale Data</option>
+        <option value="full_sensor_failure">Full Sensor Failure</option>
+      </select>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-label">Confidence</div>
+    <div class="conf-level HIGH" id="confLevel">HIGH</div>
+    <div class="conf-score">
+      <span class="conf-score-label">Detection Score</span>
+      <span class="conf-score-val num" id="confScore">0.000</span>
+    </div>
+    <div class="pills">
+      <div class="pill ok" id="pillAgree"><span class="dot"></span><span id="pillAgreeText">Sensors Agree</span></div>
+      <div class="pill ok" id="pillAdv"><span class="dot"></span><span id="pillAdvText">No Adversarial</span></div>
+    </div>
+  </section>
+
+  <!-- SENSORS -->
+  <section class="sensors" id="sensorsRow"></section>
+
+  <!-- DETAIL -->
+  <section class="detail-section">
+    <button class="detail-toggle" id="detailToggle">Show sensor detail<span class="chev">▾</span></button>
+    <table class="detail-table" id="detailTable">
+      <thead>
+        <tr>
+          <th>Sensor</th>
+          <th>Detect</th>
+          <th>Quality</th>
+          <th>Latency</th>
+          <th>Freshness</th>
+          <th>Reliability</th>
+          <th>Weight</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <!-- TIMELINE -->
+  <section class="timeline">
+    <div class="timeline-label">Timeline</div>
+    <div class="timeline-bars" id="timelineBars"></div>
+  </section>
+
+  <!-- GUIDANCE -->
+  <section class="guidance">
+    <div class="guidance-label">Operator Guidance</div>
+    <div class="guidance-summary" id="guidanceSummary">Awaiting fusion result.</div>
+    <div class="briefing">
+      <section>
+        <div class="brief-key">Threat Indicators</div>
+        <div class="brief-body" id="threatBody">None identified.</div>
+      </section>
+      <section>
+        <div class="brief-key">Recommended Actions</div>
+        <div class="brief-body" id="actionsBody">—</div>
+      </section>
+      <section>
+        <div class="brief-key">Escalation</div>
+        <div class="escalation" id="escalation">
+          <span class="esc-dot"></span>
+          <span class="esc-text" id="escText">Not required</span>
+        </div>
+      </section>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ─────────────────────────────────────────────────────────────────────
+   SCENARIO DATA — copied verbatim from v1
+   ───────────────────────────────────────────────────────────────────── */
+const SCENARIOS = {
+  gradual_degradation: {
+    name: "gradual_degradation",
+    description: "All sensors degrade progressively over time. Models physical wear, icing, or environmental drift in an Arctic or maritime context. Target remains present throughout.",
+    ground_truth: [true, true, true, true, true],
+    steps: [
+      [{sensor:"A",detected:true ,quality:0.92,latency:100},{sensor:"B",detected:true ,quality:0.90,latency:110},{sensor:"C",detected:true ,quality:0.89,latency:105}],
+      [{sensor:"A",detected:true ,quality:0.88,latency:120},{sensor:"B",detected:true ,quality:0.82,latency:130},{sensor:"C",detected:true ,quality:0.70,latency:180}],
+      [{sensor:"A",detected:true ,quality:0.80,latency:150},{sensor:"B",detected:false,quality:0.75,latency:200},{sensor:"C",detected:true ,quality:0.62,latency:250}],
+      [{sensor:"A",detected:true ,quality:0.65,latency:220},{sensor:"B",detected:false,quality:0.55,latency:420},{sensor:"C",detected:true ,quality:0.50,latency:500}],
+      [{sensor:"A",detected:false,quality:0.45,latency:500},{sensor:"B",detected:false,quality:0.35,latency:650},{sensor:"C",detected:true ,quality:0.40,latency:700}],
+    ],
+  },
+  arctic_sensor_dropout: {
+    name: "arctic_sensor_dropout",
+    description: "Sensors drop out sequentially due to extreme cold or icing. Latency spikes precede full dropout. Target is present throughout — sensor failure must not be mistaken for target absence.",
+    ground_truth: [true, true, true, true, true],
+    steps: [
+      [{sensor:"A",detected:true ,quality:0.91,latency:105},{sensor:"B",detected:true ,quality:0.88,latency:115},{sensor:"C",detected:true ,quality:0.86,latency:110}],
+      [{sensor:"A",detected:true ,quality:0.87,latency:120},{sensor:"B",detected:true ,quality:0.80,latency:140},{sensor:"C",detected:true ,quality:0.60,latency:420}],
+      [{sensor:"A",detected:true ,quality:0.83,latency:130},{sensor:"B",detected:true ,quality:0.72,latency:300},{sensor:"C",detected:false,quality:0.30,latency:700}],
+      [{sensor:"A",detected:true ,quality:0.75,latency:180},{sensor:"B",detected:false,quality:0.25,latency:800},{sensor:"C",detected:false,quality:0.10,latency:950}],
+      [{sensor:"A",detected:true ,quality:0.55,latency:350},{sensor:"B",detected:false,quality:0.15,latency:900},{sensor:"C",detected:false,quality:0.10,latency:1000}],
+    ],
+  },
+  conflict_spoofing: {
+    name: "conflict_spoofing",
+    description: "One sensor is spoofed or miscalibrated and reports the opposite of the others. Models a spoofing event or adversarial interference in an autonomous sensing network.",
+    ground_truth: [true, true, true, true, true],
+    steps: [
+      [{sensor:"A",detected:true ,quality:0.90,latency:110},{sensor:"B",detected:true ,quality:0.88,latency:115},{sensor:"C",detected:true ,quality:0.87,latency:108}],
+      [{sensor:"A",detected:true ,quality:0.89,latency:112},{sensor:"B",detected:true ,quality:0.86,latency:118},{sensor:"C",detected:false,quality:0.85,latency:110}],
+      [{sensor:"A",detected:true ,quality:0.88,latency:115},{sensor:"B",detected:false,quality:0.84,latency:120},{sensor:"C",detected:false,quality:0.83,latency:112}],
+      [{sensor:"A",detected:true ,quality:0.87,latency:118},{sensor:"B",detected:false,quality:0.85,latency:122},{sensor:"C",detected:false,quality:0.84,latency:115}],
+      [{sensor:"A",detected:true ,quality:0.88,latency:110},{sensor:"B",detected:true ,quality:0.86,latency:115},{sensor:"C",detected:true ,quality:0.85,latency:112}],
+    ],
+  },
+  stale_data: {
+    name: "stale_data",
+    description: "Sensors maintain quality but latency rises sharply — data becomes stale. Tests whether the confidence system correctly penalises old data rather than treating high-quality-but-stale readings as trustworthy.",
+    ground_truth: [true, true, true, true, false],
+    steps: [
+      [{sensor:"A",detected:true ,quality:0.90,latency:100},{sensor:"B",detected:true ,quality:0.88,latency:105},{sensor:"C",detected:true ,quality:0.87,latency:102}],
+      [{sensor:"A",detected:true ,quality:0.89,latency:250},{sensor:"B",detected:true ,quality:0.87,latency:280},{sensor:"C",detected:true ,quality:0.86,latency:260}],
+      [{sensor:"A",detected:true ,quality:0.88,latency:500},{sensor:"B",detected:true ,quality:0.86,latency:520},{sensor:"C",detected:true ,quality:0.85,latency:510}],
+      [{sensor:"A",detected:true ,quality:0.87,latency:700},{sensor:"B",detected:false,quality:0.85,latency:750},{sensor:"C",detected:true ,quality:0.84,latency:720}],
+      [{sensor:"A",detected:true ,quality:0.86,latency:900},{sensor:"B",detected:true ,quality:0.84,latency:950},{sensor:"C",detected:true ,quality:0.85,latency:920}],
+    ],
+  },
+  full_sensor_failure: {
+    name: "full_sensor_failure",
+    description: "Catastrophic event causes all sensors to fail sequentially. Tests that the system gracefully degrades to LOW confidence and correctly advises the operator. Partial recovery at step 5.",
+    ground_truth: [true, true, true, null, true],
+    steps: [
+      [{sensor:"A",detected:true ,quality:0.91,latency:108},{sensor:"B",detected:true ,quality:0.89,latency:112},{sensor:"C",detected:true ,quality:0.88,latency:110}],
+      [{sensor:"A",detected:true ,quality:0.70,latency:200},{sensor:"B",detected:false,quality:0.30,latency:600},{sensor:"C",detected:true ,quality:0.65,latency:250}],
+      [{sensor:"A",detected:false,quality:0.25,latency:700},{sensor:"B",detected:false,quality:0.15,latency:900},{sensor:"C",detected:false,quality:0.20,latency:800}],
+      [{sensor:"A",detected:false,quality:0.10,latency:1000},{sensor:"B",detected:false,quality:0.10,latency:1000},{sensor:"C",detected:false,quality:0.10,latency:1000}],
+      [{sensor:"A",detected:true ,quality:0.65,latency:200},{sensor:"B",detected:false,quality:0.20,latency:800},{sensor:"C",detected:true ,quality:0.60,latency:220}],
+    ],
+  },
+};
+
+/* ─────────────────────────────────────────────────────────────────────
+   FUSION ENGINE — copied verbatim from v1
+   ───────────────────────────────────────────────────────────────────── */
+const DETECT_THR = 0.6;
+const FRESH_TAU = 250;
+const FRESH_FLOOR = 0.05;
+const DISAGREE_PENALTY = 0.8;
+
+function freshnessFactor(latencyMs) {
+  return Math.max(FRESH_FLOOR, Math.exp(-latencyMs / FRESH_TAU));
+}
+
+function reliabilityBand(avg) {
+  if (avg >= 0.8) return 1.0;
+  if (avg >= 0.6) return 0.9;
+  if (avg >= 0.4) return 0.75;
+  return 0.6;
+}
+
+class FusionEngine {
+  constructor() { this.history = {}; }
+  reset() { this.history = {}; }
+  reliabilityFor(sensorId) {
+    const h = this.history[sensorId] || [];
+    if (h.length === 0) return 1.0;
+    const avg = h.reduce((a,b)=>a+b,0) / h.length;
+    return reliabilityBand(avg);
+  }
+  flagSuspect(readings) {
+    const flags = {};
+    readings.forEach(r => {
+      const others = readings.filter(o => o.sensor !== r.sensor);
+      if (others.length === 0) { flags[r.sensor] = false; return; }
+      const consensus = others.reduce((s,o)=>s+(o.detected?1:0),0) / others.length;
+      const claim = r.detected ? 1 : 0;
+      flags[r.sensor] = (r.quality >= 0.6 && Math.abs(claim - consensus) > 0.7);
+    });
+    return flags;
+  }
+  fuse(readings) {
+    const sensorData = readings.map(r => {
+      const fresh = freshnessFactor(r.latency);
+      const rel = this.reliabilityFor(r.sensor);
+      const weight = r.quality * fresh * rel;
+      return { ...r, freshness: fresh, reliability: rel, weight };
+    });
+    const totalW = sensorData.reduce((s,d)=>s+d.weight, 0) || 1e-9;
+    const score = sensorData.reduce((s,d)=>s + d.weight * (d.detected ? 1 : 0), 0) / totalW;
+    const detSet = new Set(sensorData.map(d => d.detected));
+    const disagreement = detSet.size > 1;
+    const penalty = disagreement ? DISAGREE_PENALTY : 1.0;
+    const finalScore = Math.max(0, Math.min(1, score * penalty));
+    const allHighQ = sensorData.every(d => d.quality > 0.8);
+    const avgLat = sensorData.reduce((s,d)=>s+d.latency,0) / sensorData.length;
+    const avgQual = sensorData.reduce((s,d)=>s+d.quality,0) / sensorData.length;
+    let confidence;
+    if (finalScore >= 0.8 && allHighQ && avgLat < 200 && !disagreement) confidence = "HIGH";
+    else if (finalScore >= 0.5) confidence = "MEDIUM";
+    else confidence = "LOW";
+    const suspectFlags = this.flagSuspect(readings);
+    sensorData.forEach(d => {
+      if (!this.history[d.sensor]) this.history[d.sensor] = [];
+      this.history[d.sensor].push(d.quality * d.freshness);
+      if (this.history[d.sensor].length > 5) this.history[d.sensor].shift();
+    });
+    const detected = finalScore >= DETECT_THR;
+    const droppedCount = sensorData.filter(d => d.weight < 0.2).length;
+    return {
+      sensors: sensorData, score: finalScore, rawScore: score, penalty,
+      disagreement, confidence, detected, avgLat, avgQual, suspectFlags, droppedCount,
+    };
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   GUIDANCE — restructured for prose-style brief
+   ───────────────────────────────────────────────────────────────────── */
+function generateGuidance(result) {
+  const degraded = result.sensors.filter(s => s.quality < 0.6 || s.freshness < 0.3).map(s => `Sensor ${s.sensor}`);
+  const suspects = Object.entries(result.suspectFlags).filter(([,v])=>v).map(([k])=>`Sensor ${k}`);
+  const dropped = result.sensors.filter(s => s.weight < 0.2).map(s => `Sensor ${s.sensor}`);
+
+  let summary = "", threats = [], actions = [], escalate = false;
+
+  if (result.confidence === "HIGH") {
+    summary = `Sensor picture is reliable. All sources are in agreement with low latency. Detection score ${(result.score*100).toFixed(0)}% — safe for operational decision-making.`;
+    threats = [];
+    actions.push("Maintain current sensing posture.");
+    actions.push("Continue scheduled fusion cadence. Log contact.");
+  } else if (result.confidence === "MEDIUM") {
+    const reasons = [];
+    if (degraded.length) reasons.push(`degraded readings on ${degraded.join(", ")}`);
+    if (result.disagreement) reasons.push("sensor disagreement");
+    if (result.avgLat >= 400) reasons.push(`elevated latency averaging ${result.avgLat.toFixed(0)} ms`);
+    summary = `Proceed with caution. ${reasons.length ? capitalize(reasons.join("; ")) + "." : ""} Treat the fused result as indicative — corroborate before acting on isolated cues.`;
+    if (degraded.length) threats.push(`Degraded sources: ${degraded.join(", ")}.`);
+    if (result.disagreement) threats.push("Inter-sensor disagreement detected.");
+    if (suspects.length) threats.push(`Possible adversarial activity: ${suspects.join(", ")}.`);
+    actions.push("Increase fusion cadence to validate readings.");
+    actions.push("Cross-reference with historical track if available.");
+    if (suspects.length) actions.push(`Isolate ${suspects.join(", ")} from voting weight.`);
+  } else {
+    const reasons = [];
+    if (dropped.length) reasons.push(`${dropped.length} sensor${dropped.length>1?"s":""} dropped`);
+    if (result.disagreement) reasons.push("hard sensor disagreement");
+    if (result.avgQual < 0.4) reasons.push("quality collapse");
+    if (result.avgLat >= 600) reasons.push(`stale data averaging ${result.avgLat.toFixed(0)} ms`);
+    if (suspects.length) reasons.push(`${suspects.length} suspected adversarial`);
+    summary = `Unreliable picture. ${reasons.length ? capitalize(reasons.join("; ")) + "." : "Sensor confidence is below the operational floor."} Do not act without independent corroboration. Treat this as sensor failure, not target absence.`;
+    threats.push("Confidence below operational floor.");
+    if (dropped.length) threats.push(`Dropped sensors: ${dropped.join(", ")}.`);
+    if (suspects.length) threats.push(`Suspected adversarial: ${suspects.join(", ")}.`);
+    if (result.disagreement) threats.push("Sensors disagree — possible spoofing or partial failure.");
+    actions.push("Hold position — do not commit to a course of action on this picture.");
+    actions.push("Request operator confirmation via an independent channel.");
+    actions.push("Switch to backup ISR sources if available.");
+    if (dropped.length) actions.push(`Initiate diagnostic sweep on ${dropped.join(", ")}.`);
+    escalate = true;
+  }
+
+  return { summary, threats, actions, escalate };
+}
+
+function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+/* ─────────────────────────────────────────────────────────────────────
+   STATE
+   ───────────────────────────────────────────────────────────────────── */
+const state = {
+  scenarioKey: "gradual_degradation",
+  step: 0,
+  playing: false,
+  intervalId: null,
+  engine: new FusionEngine(),
+  history: [],
+  highlightedSensor: null,
+  detailOpen: false,
+};
+
+const $ = (id) => document.getElementById(id);
+const fmt = (n, d=2) => Number(n).toFixed(d);
+
+/* ─────────────────────────────────────────────────────────────────────
+   COMPUTE
+   ───────────────────────────────────────────────────────────────────── */
+function recompute() {
+  state.engine.reset();
+  state.history = [];
+  const sc = SCENARIOS[state.scenarioKey];
+  for (let i = 0; i <= state.step; i++) {
+    const result = state.engine.fuse(sc.steps[i]);
+    state.history.push(result);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   COUNT-UP NUMBER ANIMATION
+   ───────────────────────────────────────────────────────────────────── */
+const animTargets = new WeakMap();
+
+function animateNumber(el, to, decimals = 2, suffix = "") {
+  const fromStr = (animTargets.get(el) ?? null);
+  const from = fromStr === null ? to : fromStr;
+  animTargets.set(el, to);
+  if (Math.abs(from - to) < 0.0001) {
+    el.textContent = to.toFixed(decimals) + suffix;
+    return;
+  }
+  const dur = 600;
+  const start = performance.now();
+  function tick(now) {
+    const t = Math.min(1, (now - start) / dur);
+    const eased = 1 - Math.pow(1 - t, 3);
+    const v = from + (to - from) * eased;
+    el.textContent = v.toFixed(decimals) + suffix;
+    if (t < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   RENDER
+   ───────────────────────────────────────────────────────────────────── */
+function renderAll() {
+  const sc = SCENARIOS[state.scenarioKey];
+  const result = state.history[state.history.length - 1];
+
+  $("stepNow").textContent = state.step + 1;
+  $("stepTotal").textContent = sc.steps.length;
+
+  // Confidence hero
+  const lvl = $("confLevel");
+  lvl.textContent = result.confidence;
+  lvl.className = "conf-level " + result.confidence;
+
+  const scoreEl = $("confScore");
+  animateNumber(scoreEl, result.score, 3, "");
+  scoreEl.style.color = colorForConf(result.confidence);
+
+  // Pills
+  const agreePill = $("pillAgree");
+  const agreeText = $("pillAgreeText");
+  if (result.disagreement) {
+    agreePill.className = "pill warn";
+    agreeText.textContent = "Sensor Disagreement";
+  } else {
+    agreePill.className = "pill ok";
+    agreeText.textContent = "Sensors Agree";
+  }
+
+  const advPill = $("pillAdv");
+  const advText = $("pillAdvText");
+  const suspectKeys = Object.entries(result.suspectFlags).filter(([,v])=>v).map(([k])=>k);
+  if (suspectKeys.length) {
+    advPill.className = "pill bad";
+    advText.textContent = "Adversarial Detected · Sensor " + suspectKeys.join(", ");
+  } else {
+    advPill.className = "pill ok";
+    advText.textContent = "No Adversarial";
+  }
+
+  renderSensors(result);
+  renderTimeline(sc);
+  renderDetailTable(result);
+  renderGuidance(result);
+}
+
+function colorForConf(c) {
+  return c === "HIGH" ? "var(--high)" : c === "MEDIUM" ? "var(--med)" : "var(--low)";
+}
+function qBand(q) { return q > 0.8 ? "high" : q > 0.5 ? "med" : "low"; }
+function lBand(l) { return l < 200 ? "high" : l < 400 ? "med" : "low"; }
+function fBand(f) { return f > 0.6 ? "high" : f > 0.3 ? "med" : "low"; }
+function wBand(w) { return w > 0.6 ? "high" : w > 0.3 ? "med" : "low"; }
+
+function renderSensors(result) {
+  const row = $("sensorsRow");
+  // Build once, then update in place to keep transitions smooth
+  const existing = row.children.length === result.sensors.length;
+  if (!existing) row.innerHTML = "";
+
+  result.sensors.forEach((s, idx) => {
+    const suspect = !!result.suspectFlags[s.sensor];
+    const highlighted = state.highlightedSensor === s.sensor;
+    let card = row.children[idx];
+    if (!card) {
+      card = document.createElement("div");
+      card.className = "sensor";
+      card.dataset.sensor = s.sensor;
+      card.innerHTML = `
+        <div class="sensor-head">
+          <div class="sensor-name">Sensor <span class="sn"></span></div>
+          <div class="sensor-tag">Suspect</div>
+        </div>
+        <div class="det-status">
+          <div class="det-circle"></div>
+          <div class="det-text"></div>
+        </div>
+        <div class="sensor-grid">
+          <div class="stat">
+            <div class="stat-key">Quality</div>
+            <div class="stat-val"><span class="num q-num">0.00</span></div>
+            <div class="qbar"><div class="qbar-fill"></div></div>
+          </div>
+          <div class="stat">
+            <div class="stat-key">Latency</div>
+            <div class="stat-val"><span class="num l-num">0</span><span class="unit"> ms</span></div>
+          </div>
+          <div class="stat">
+            <div class="stat-key">Freshness</div>
+            <div class="stat-val"><span class="num f-num">0.00</span></div>
+          </div>
+          <div class="stat">
+            <div class="stat-key">Weight</div>
+            <div class="stat-val"><span class="num w-num">0.00</span></div>
+          </div>
+        </div>`;
+      card.addEventListener("click", () => {
+        state.highlightedSensor = state.highlightedSensor === card.dataset.sensor ? null : card.dataset.sensor;
+        // open detail if not open
+        if (state.highlightedSensor && !state.detailOpen) toggleDetail(true);
+        renderAll();
+      });
+      row.appendChild(card);
+    }
+    card.dataset.sensor = s.sensor;
+    card.className = "sensor" + (suspect ? " suspect" : "") + (highlighted ? " highlighted" : "");
+    card.querySelector(".sn").textContent = s.sensor;
+
+    const detCircle = card.querySelector(".det-circle");
+    const detText = card.querySelector(".det-text");
+    detCircle.className = "det-circle" + (s.detected ? "" : " off");
+    detText.textContent = s.detected ? "Detection" : "No detection";
+
+    animateNumber(card.querySelector(".q-num"), s.quality, 2);
+    animateNumber(card.querySelector(".l-num"), s.latency, 0);
+    animateNumber(card.querySelector(".f-num"), s.freshness, 2);
+    animateNumber(card.querySelector(".w-num"), s.weight, 3);
+
+    const fill = card.querySelector(".qbar-fill");
+    fill.style.width = (s.quality * 100) + "%";
+    fill.className = "qbar-fill " + qBand(s.quality);
+  });
+}
+
+function renderTimeline(sc) {
+  const bars = $("timelineBars");
+  bars.innerHTML = "";
+  for (let i = 0; i < sc.steps.length; i++) {
+    const isCurrent = (i === state.step);
+    const isFuture  = (i > state.step);
+    let conf = "";
+    if (i <= state.step) conf = state.history[i].confidence;
+    const gt = sc.ground_truth[i];
+    const gtCls = gt === true ? "t" : gt === false ? "f" : "u";
+    const gtTxt = gt === true ? "GT:T" : gt === false ? "GT:F" : "GT:?";
+    const step = document.createElement("div");
+    step.className = "tl-step" + (isCurrent ? " current" : "");
+    step.innerHTML = `
+      <div class="tl-bar ${isFuture ? "future" : conf}"></div>
+      <div class="tl-meta">
+        <span class="num">0${i+1}</span>
+        <span class="gt ${gtCls}">${gtTxt}</span>
+      </div>`;
+    step.addEventListener("click", () => gotoStep(i));
+    bars.appendChild(step);
+  }
+}
+
+function renderDetailTable(result) {
+  const tbody = $("detailTable").querySelector("tbody");
+  tbody.innerHTML = "";
+  result.sensors.forEach(s => {
+    const suspect = result.suspectFlags[s.sensor];
+    const tr = document.createElement("tr");
+    if (state.highlightedSensor === s.sensor) tr.className = "highlighted";
+    tr.innerHTML = `
+      <td class="k">${s.sensor}${suspect ? '<span class="suspect-mark">⚠</span>' : ''}</td>
+      <td class="${s.detected ? 'det-yes' : 'det-no'}">${s.detected ? 'Yes' : 'No'}</td>
+      <td class="num ${qBand(s.quality)}">${fmt(s.quality, 2)}</td>
+      <td class="num ${lBand(s.latency)}">${s.latency} ms</td>
+      <td class="num ${fBand(s.freshness)}">${fmt(s.freshness, 2)}</td>
+      <td class="num">${fmt(s.reliability, 2)}</td>
+      <td class="num ${wBand(s.weight)}">${fmt(s.weight, 3)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderGuidance(result) {
+  const g = generateGuidance(result);
+  $("guidanceSummary").textContent = g.summary;
+  $("threatBody").innerHTML = g.threats.length
+    ? "<ul>" + g.threats.map(t => `<li>${t}</li>`).join("") + "</ul>"
+    : "None identified.";
+  $("actionsBody").innerHTML = "<ul>" + g.actions.map(a => `<li>${a}</li>`).join("") + "</ul>";
+  const esc = $("escalation");
+  esc.className = "escalation" + (g.escalate ? " required" : "");
+  $("escText").textContent = g.escalate ? "Escalation required — operator confirmation" : "Not required";
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   CONTROLS
+   ───────────────────────────────────────────────────────────────────── */
+function loadScenario(key) {
+  state.scenarioKey = key;
+  state.step = 0;
+  state.highlightedSensor = null;
+  const sel = $("scenarioSel");
+  if (sel && sel.value !== key) sel.value = key;
+  recompute();
+  renderAll();
+}
+function gotoStep(i) {
+  const sc = SCENARIOS[state.scenarioKey];
+  if (i < 0 || i >= sc.steps.length) return;
+  state.step = i;
+  recompute();
+  renderAll();
+}
+function nextStep() {
+  const sc = SCENARIOS[state.scenarioKey];
+  if (state.step + 1 >= sc.steps.length) {
+    if (state.playing) togglePlay();
+    return;
+  }
+  gotoStep(state.step + 1);
+}
+function prevStep() { if (state.step > 0) gotoStep(state.step - 1); }
+
+function togglePlay() {
+  state.playing = !state.playing;
+  const btn = $("btnPlay");
+  if (state.playing) {
+    btn.textContent = "❚❚";
+    state.intervalId = setInterval(() => {
+      const sc = SCENARIOS[state.scenarioKey];
+      if (state.step + 1 >= sc.steps.length) gotoStep(0);
+      else nextStep();
+    }, 2500);
+  } else {
+    btn.textContent = "▶";
+    if (state.intervalId) { clearInterval(state.intervalId); state.intervalId = null; }
+  }
+}
+function reset() {
+  if (state.playing) togglePlay();
+  state.highlightedSensor = null;
+  gotoStep(0);
+}
+
+function toggleDetail(force) {
+  state.detailOpen = typeof force === "boolean" ? force : !state.detailOpen;
+  const btn = $("detailToggle");
+  const tbl = $("detailTable");
+  if (state.detailOpen) {
+    btn.classList.add("open");
+    btn.firstChild.textContent = "Hide sensor detail";
+    tbl.classList.add("open");
+  } else {
+    btn.classList.remove("open");
+    btn.firstChild.textContent = "Show sensor detail";
+    tbl.classList.remove("open");
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   WIRE-UP
+   ───────────────────────────────────────────────────────────────────── */
+$("scenarioSel").addEventListener("change", (e) => loadScenario(e.target.value));
+$("btnPrev").addEventListener("click", prevStep);
+$("btnNext").addEventListener("click", nextStep);
+$("btnPlay").addEventListener("click", togglePlay);
+$("btnReset").addEventListener("click", reset);
+$("detailToggle").addEventListener("click", () => toggleDetail());
+
+document.addEventListener("keydown", (e) => {
+  const tag = (e.target && e.target.tagName) || "";
+  if (tag === "SELECT" || tag === "INPUT") return;
+  if (e.key === "ArrowRight") nextStep();
+  else if (e.key === "ArrowLeft") prevStep();
+  else if (e.key === " ") { e.preventDefault(); togglePlay(); }
+  else if (e.key === "r" || e.key === "R") reset();
+});
+
+/* boot */
+loadScenario(state.scenarioKey);
+</script>
+</body>
+</html>
