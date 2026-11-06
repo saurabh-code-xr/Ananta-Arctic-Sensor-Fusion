@@ -30,9 +30,23 @@ measured results. The only defensible claim from this script is the
 PATTERN: a confidence-aware fusion layer can surface sensor disagreement
 and quality degradation measurably earlier than a raw-position-error
 threshold would, in a scenario shaped like an underground GNSS-denied
-corridor. Replacing the simulated adapter below with real NORCAT facility
-logs (same engine, same config, new data source) is the next step --
-see generate_* functions for exactly what a real log needs to supply.
+corridor.
+
+REAL-DATA PATH (once NORCAT facility logs exist): this script is now
+paired with two modules that make that swap a config change, not a
+rewrite:
+  - parse_field_log.py      -- generic column-mapping CSV adapter for
+                                whatever log format the facility exports,
+                                producing the same sensor-list shape this
+                                script generates in generate_timestep_sensors().
+  - ground_truth_compare.py -- computes REAL position error against an
+                                independent survey/ground-truth track and
+                                runs the same early_warning_summary() this
+                                script uses, so the metric definition is
+                                identical between this simulated run and
+                                a future real one.
+  - generate_field_report.py -- turns either run's JSON output into a
+                                one-page markdown+chart report.
 
 Usage:
     python analyze_norcat_testbed.py
@@ -54,6 +68,7 @@ from data_fusion.fusion_engine import fuse_sensors
 from data_fusion.confidence_engine import compute_confidence
 from data_fusion.reliability_memory import update_reliability_history
 from data_fusion import config as cfg_module
+from ground_truth_compare import early_warning_summary
 
 DEFAULT_CONFIG_PATH = os.path.join(_HERE, "config_norcat.yaml")
 
@@ -220,22 +235,22 @@ def run(duration_s: float = DURATION_S, dt: float = DT_S, config_path: str = DEF
     print(f"\nMagnetometer anomaly detectable: {qmag_detectable}/{total} steps "
           f"({qmag_detectable/total*100:.0f}%) -- outside ferrous-equipment zones")
 
-    # Early-warning narrative: first point where confidence drops off HIGH
-    # while the raw fused position error is still small, vs. where that
-    # error eventually becomes severe.
-    sustained_warning = next(
-        (r for r in results if r["fused_position_error_m"] > 1.0 and r["confidence"]["level"] != "HIGH"),
-        None,
-    )
-    if sustained_warning:
-        final_error = results[-1]["fused_position_error_m"]
-        lead_min = (results[-1]["t_s"] - sustained_warning["t_s"]) / 60
-        print(f"\nFirst sustained confidence degradation at t={sustained_warning['t_s']:.0f}s "
-              f"({sustained_warning['t_s']/60:.1f} min in), fused position error only "
-              f"{sustained_warning['fused_position_error_m']:.2f}m.")
-        print(f"By end of run (t={results[-1]['t_s']:.0f}s), unflagged raw error would have reached "
-              f"{final_error:.2f}m. The confidence layer surfaced the problem {lead_min:.1f} minutes "
-              f"before error became severe -- that lead time is the operational value: time for an "
+    # Early-warning narrative: uses the same early_warning_summary() that a
+    # real NORCAT run (ground_truth_compare.py) will use against measured
+    # error -- here fed with the simulated fused_position_error_m instead
+    # of a real ground-truth comparison, so the metric definition is
+    # identical between the simulated run and a future real one.
+    confidence_trace = [{"t_s": r["t_s"], "level": r["confidence"]["level"]} for r in results]
+    error_series = [{"t_s": r["t_s"], "error_m": r["fused_position_error_m"]} for r in results]
+    ew = early_warning_summary(confidence_trace, error_series, error_threshold_m=1.0)
+
+    if ew.get("warning_found"):
+        print(f"\nFirst sustained confidence degradation at t={ew['warning_t_s']:.0f}s "
+              f"({ew['warning_t_s']/60:.1f} min in), fused position error only "
+              f"{ew['warning_error_m']:.2f}m.")
+        print(f"By end of run (t={ew['final_t_s']:.0f}s), unflagged raw error would have reached "
+              f"{ew['final_error_m']:.2f}m. The confidence layer surfaced the problem {ew['lead_time_min']:.1f} "
+              f"minutes before error became severe -- that lead time is the operational value: time for an "
               f"operator to intervene before trusting a position that has quietly become unreliable.")
     else:
         print("\nNo sustained confidence degradation detected in this run.")
@@ -251,6 +266,7 @@ def run(duration_s: float = DURATION_S, dt: float = DT_S, config_path: str = DEF
     with open(json_path, "w") as f:
         json.dump({
             "meta": {
+                "title": "Ananta Meridian -- NORCAT Underground Testbed (SIMULATED)",
                 "status": "SIMULATED -- not NORCAT facility data",
                 "duration_s": duration_s,
                 "dt_s": dt,
@@ -258,6 +274,7 @@ def run(duration_s: float = DURATION_S, dt: float = DT_S, config_path: str = DEF
                 "engine": "data_fusion.fusion_engine / confidence_engine / reliability_memory (real, unmodified)",
             },
             "summary": {"high": high, "medium": medium, "low": low, "total": total},
+            "early_warning": ew,
             "results": results,
         }, f, indent=2)
 
