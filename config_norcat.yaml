@@ -1,0 +1,81 @@
+# Ananta Meridian — NORCAT Underground GNSS-Denied Testbed Configuration
+#
+# Tuned for a terrestrial/underground sensing environment: short sensor-to-fusion
+# latencies (tens-to-low-hundreds of ms for INS/LiDAR/magnetometer processing),
+# unlike the marine/satellite preset in the main config.yaml (which treats
+# 800-2000ms latency as normal). Using the marine thresholds here would mask
+# genuine latency degradation, so this file narrows the brackets to the
+# drone/terrestrial preset already documented (commented out) in config.yaml.
+#
+# STATUS: all sensor streams in this config are SIMULATED (see
+# analyze_norcat_testbed.py). This file governs how the real fusion/confidence
+# engine interprets that simulated data. When real NORCAT facility logs are
+# available, point FUSION_CONFIG at this same file (or a refined copy) and
+# swap the simulated adapter for a CSV/log adapter — the engine code does not
+# change.
+
+system:
+  name: "Ananta Meridian Data Fusion — NORCAT Underground Testbed"
+  version: "0.2.0"
+  log_level: "INFO"
+  log_to_file: true
+  log_file: "logs/fusion_norcat.log"
+
+fusion:
+  detection_threshold: 0.6
+  disagreement_penalty: 0.8
+
+  freshness_continuous:
+    model: exponential
+    tau_ms: 200          # terrestrial: at 200ms freshness = 0.37 (tighter than marine's 500ms)
+    floor: 0.05
+
+  freshness_brackets:
+    - max_latency_ms: 50
+      factor: 1.0
+    - max_latency_ms: 100
+      factor: 0.9
+    - max_latency_ms: 150
+      factor: 0.75
+    - max_latency_ms: 250
+      factor: 0.55
+    - max_latency_ms: 400
+      factor: 0.35
+    - max_latency_ms: 99999
+      factor: 0.2
+
+  reliability_bands:
+    - min_avg: 0.8
+      factor: 1.0
+    - min_avg: 0.6
+      factor: 0.9
+    - min_avg: 0.4
+      factor: 0.75
+    - min_avg: 0.0
+      factor: 0.6
+
+confidence:
+  thresholds:
+    high:
+      min_score: 0.8
+      min_quality: 0.8
+      max_latency_ms: 200        # terrestrial: tight — real-time nav needs fresh fixes
+      allow_disagreement: false
+    medium:
+      min_score: 0.5
+      min_quality: 0.55
+      max_latency_ms: 450
+  sensor_flags:
+    low_quality_threshold: 0.5
+    high_latency_threshold: 400
+
+experiment:
+  results_dir: "results"
+  save_results: true
+
+sensors:
+  source: "simulation"
+  expected_sensors:
+    - "INS"
+    - "LIDAR"
+    - "QMAG"
